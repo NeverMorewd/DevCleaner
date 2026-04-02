@@ -38,8 +38,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; Flutter GUI (main executable + all DLLs and data)
 Source: "..\flutter_app\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Rust backend daemon — placed alongside the Flutter exe
-Source: "..\target\release\devcleaner.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Rust backend daemon — already copied into Flutter output dir by CI
+; (see release.yml: Copy devcleaner.exe into Flutter output)
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
