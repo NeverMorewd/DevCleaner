@@ -658,7 +658,280 @@ class _ScanPageState extends State<ScanPage> {
         ],
       ),
     );
-    if (confirmed == true && context.mounted) scan.deleteSelected();
+    if (confirmed == true && context.mounted) {
+      await scan.deleteSelected();
+      if (context.mounted && scan.lastDeleteErrors.isNotEmpty) {
+        await _showDeleteErrorsDialog(context, scan.lastDeleteErrors);
+      }
+    }
+  }
+
+  // ── Delete-errors dialog ──────────────────────────────────────────────────
+
+  Future<void> _showDeleteErrorsDialog(
+      BuildContext context, List<DeleteError> errors) async {
+    final theme = Theme.of(context);
+    final lockedErrors   = errors.where((e) => e.lockingProcesses.isNotEmpty).toList();
+    final permErrors     = errors.where((e) => e.lockingProcesses.isEmpty && e.accessDenied).toList();
+    final otherErrors    = errors.where((e) => !e.accessDenied).toList();
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 100, vertical: 60),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Title bar
+            Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                border: Border(
+                    bottom: BorderSide(
+                        color: theme.colorScheme.error.withValues(alpha: 0.3))),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: theme.colorScheme.onErrorContainer),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${errors.length} item${errors.length == 1 ? '' : 's'} could not be deleted',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.close,
+                        size: 16,
+                        color: theme.colorScheme.onErrorContainer),
+                    onPressed: () => Navigator.pop(ctx),
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ),
+            // Body
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Locked by process
+                    if (lockedErrors.isNotEmpty) ...[
+                      _errSectionTitle(
+                          theme, Icons.lock_outline, 'File in use',
+                          theme.colorScheme.error),
+                      const SizedBox(height: 6),
+                      ...lockedErrors.map(
+                          (e) => _errLockedRow(theme, e)),
+                      const SizedBox(height: 14),
+                    ],
+                    // Permission denied, no locker found
+                    if (permErrors.isNotEmpty) ...[
+                      _errSectionTitle(
+                          theme, Icons.no_encryption_outlined,
+                          'Access denied', theme.colorScheme.error),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.errorContainer
+                              .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.admin_panel_settings_outlined,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'These files are protected. '
+                                'Try running DevCleaner as Administrator.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ...permErrors.map((e) => _errPathRow(theme, e)),
+                      const SizedBox(height: 14),
+                    ],
+                    // Other errors
+                    if (otherErrors.isNotEmpty) ...[
+                      _errSectionTitle(
+                          theme, Icons.error_outline, 'Other errors',
+                          theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(height: 6),
+                      ...otherErrors.map((e) => _errPathRow(theme, e,
+                          showMessage: true)),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Footer
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              decoration: BoxDecoration(
+                border: Border(
+                    top: BorderSide(
+                        color: theme.dividerColor.withValues(alpha: 0.5))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errSectionTitle(
+      ThemeData theme, IconData icon, String title, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: theme.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _errLockedRow(ThemeData theme, DeleteError e) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // File path
+          Row(children: [
+            Icon(Icons.insert_drive_file_outlined,
+                size: 12,
+                color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                e.path,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontFamily: 'Consolas, monospace',
+                  fontSize: 11,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          // Locking processes table
+          Container(
+            margin: const EdgeInsets.only(left: 18),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              children: e.lockingProcesses.map((proc) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.memory_outlined,
+                          size: 12,
+                          color: theme.colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          proc.name,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        'PID ${proc.pid}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                          fontFamily: 'Consolas, monospace',
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _errPathRow(ThemeData theme, DeleteError e,
+      {bool showMessage = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.insert_drive_file_outlined,
+                size: 12,
+                color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                e.path,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontFamily: 'Consolas, monospace',
+                  fontSize: 11,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ]),
+          if (showMessage)
+            Padding(
+              padding: const EdgeInsets.only(left: 18, top: 2),
+              child: Text(
+                e.message,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildDeleteOverlay(BuildContext context, ScanProvider scan) {

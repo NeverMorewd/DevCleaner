@@ -5,6 +5,42 @@ import '../models/rpc_types.dart';
 
 enum ScanState { idle, scanning, done, error }
 
+// ── Delete-error models ────────────────────────────────────────────────────────
+
+class LockingProcess {
+  final int pid;
+  final String name;
+  const LockingProcess({required this.pid, required this.name});
+
+  factory LockingProcess.fromJson(Map<String, dynamic> j) =>
+      LockingProcess(pid: (j['pid'] as num).toInt(), name: j['name'] as String);
+}
+
+class DeleteError {
+  final String path;
+  final String message;
+  final bool accessDenied;
+  final List<LockingProcess> lockingProcesses;
+
+  const DeleteError({
+    required this.path,
+    required this.message,
+    required this.accessDenied,
+    required this.lockingProcesses,
+  });
+
+  factory DeleteError.fromJson(Map<String, dynamic> j) => DeleteError(
+        path: j['path'] as String? ?? '',
+        message: j['message'] as String? ?? 'Unknown error',
+        accessDenied: j['access_denied'] as bool? ?? false,
+        lockingProcesses: (j['locking_processes'] as List<dynamic>? ?? [])
+            .map((e) => LockingProcess.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+// ── Provider ───────────────────────────────────────────────────────────────────
+
 class ScanProvider extends ChangeNotifier {
   final DaemonService _daemon;
   ScanState _state = ScanState.idle;
@@ -21,6 +57,9 @@ class ScanProvider extends ChangeNotifier {
   String _searchQuery = '';
   String _sortBy = 'size';
   bool _sortAscending = false;
+
+  /// Errors from the most recent deleteSelected() call.
+  List<DeleteError> _lastDeleteErrors = [];
 
   StreamSubscription<Map<String, dynamic>>? _scanProgressSub;
 
@@ -42,6 +81,7 @@ class ScanProvider extends ChangeNotifier {
   String get sortBy => _sortBy;
   bool get sortAscending => _sortAscending;
   String? get scanId => _scanId;
+  List<DeleteError> get lastDeleteErrors => _lastDeleteErrors;
 
   List<CleanItem> get allItems =>
       _groups.expand((g) => g.items).toList();
@@ -163,20 +203,38 @@ class ScanProvider extends ChangeNotifier {
     _deleteProgress = 0;
     _deleteTotal = selected.length;
     _freedBytes = 0;
+    _lastDeleteErrors = [];
     notifyListeners();
 
+    // Track which paths succeed via progress notifications
+    final successPaths = <String>{};
     final subscription = _daemon.deleteProgress.listen((params) {
       _deleteProgress = (params['items_done'] as num? ?? 0).toInt();
       _freedBytes = (params['freed_bytes'] as num? ?? 0).toInt();
+      // A null 'error' field means this item was deleted successfully
+      if (params['error'] == null) {
+        final p = params['path'] as String?;
+        if (p != null) successPaths.add(p);
+      }
       notifyListeners();
     });
 
     try {
       final paths = selected.map((i) => i.path).toList();
-      await _daemon.deleteItems(_scanId!, paths);
-      // Remove deleted items from groups
+      final resp = await _daemon.deleteItems(_scanId!, paths);
+
+      // Parse errors from final response
+      final result = resp['result'] as Map<String, dynamic>? ?? {};
+      final rawErrors = result['errors'] as List<dynamic>? ?? [];
+      _lastDeleteErrors = rawErrors
+          .map((e) => DeleteError.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      // Remove only successfully deleted items from the result list
+      final failedPaths = _lastDeleteErrors.map((e) => e.path).toSet();
       for (final group in _groups) {
-        group.items.removeWhere((item) => paths.contains(item.path));
+        group.items.removeWhere(
+            (item) => paths.contains(item.path) && !failedPaths.contains(item.path));
       }
       _groups.removeWhere((g) => g.items.isEmpty);
     } finally {

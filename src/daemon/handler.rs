@@ -332,7 +332,14 @@ fn handle_delete_items(
                 write(&serde_json::to_value(notif).unwrap());
             }
             Err(e) => {
-                errors.push(json!({"path": path_str, "message": e.to_string()}));
+                let locking_json =
+                    serde_json::to_value(&e.locking_processes).unwrap_or(Value::Null);
+                errors.push(json!({
+                    "path": path_str,
+                    "message": e.message,
+                    "access_denied": e.access_denied,
+                    "locking_processes": locking_json,
+                }));
                 let notif = RpcNotification::new(
                     "delete_progress",
                     json!({

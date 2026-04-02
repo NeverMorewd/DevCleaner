@@ -3,6 +3,7 @@ mod cli;
 mod config;
 mod daemon;
 mod display;
+mod locking;
 mod scanner;
 mod types;
 mod utils;
