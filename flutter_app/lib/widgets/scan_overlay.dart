@@ -39,7 +39,6 @@ class ScanOverlay extends StatelessWidget {
                       width: 76,
                       height: 76,
                       child: CircularProgressIndicator(
-                        value: progress,
                         strokeWidth: 5.5,
                         backgroundColor:
                             theme.colorScheme.surfaceContainerHighest,

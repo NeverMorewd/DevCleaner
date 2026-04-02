@@ -374,14 +374,13 @@ class _ScannerCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Switch(
-                value: enabled,
-                onChanged: onToggle,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                thumbColor: WidgetStateProperty.resolveWith((states) =>
-                    states.contains(WidgetState.selected)
-                        ? theme.colorScheme.primary
-                        : null),
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                  value: enabled,
+                  onChanged: onToggle,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ],
           ),
