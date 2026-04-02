@@ -30,7 +30,9 @@ void main() async {
   final daemon = DaemonService();
   try {
     await daemon.start();
-  } catch (_) {}
+  } catch (e) {
+    daemon.setStartError(e.toString());
+  }
 
   runApp(DevCleanerApp(daemon: daemon));
 }
@@ -102,12 +104,38 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scan = context.watch<ScanProvider>();
+    final scan   = context.watch<ScanProvider>();
+    final daemon = context.watch<DaemonService>();
+    final theme  = Theme.of(context);
 
     return Scaffold(
       body: Column(
         children: [
           const AppTitleBar(),
+          // Daemon-not-found error banner
+          if (daemon.startError != null)
+            Material(
+              color: theme.colorScheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 15, color: theme.colorScheme.onErrorContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Backend not found — run  cargo build  in the repo root first.  '
+                        '(${daemon.startError})',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Expanded(
             child: Stack(
               children: [

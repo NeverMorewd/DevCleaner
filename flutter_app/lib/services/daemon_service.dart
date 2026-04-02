@@ -13,12 +13,21 @@ class DaemonService extends ChangeNotifier {
   final _deleteProgressController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  String? _startError;
+
   Stream<Map<String, dynamic>> get scanProgress =>
       _scanProgressController.stream;
   Stream<Map<String, dynamic>> get deleteProgress =>
       _deleteProgressController.stream;
 
   bool get isConnected => _process != null;
+
+  /// Set when the daemon process could not be started.
+  String? get startError => _startError;
+  void setStartError(String msg) {
+    _startError = msg;
+    notifyListeners();
+  }
 
   Future<void> start() async {
     final exe = _locateExe();
