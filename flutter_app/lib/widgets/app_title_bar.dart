@@ -117,12 +117,42 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
 
 // ── Settings dialog ────────────────────────────────────────────────────────────
 
-class _SettingsDialog extends StatelessWidget {
+class _SettingsDialog extends StatefulWidget {
   const _SettingsDialog();
+
+  @override
+  State<_SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<_SettingsDialog> {
+  String? _saveStatus;
+  bool _isError = false;
+
+  void _onStatus(String? status, bool isError) {
+    if (mounted) setState(() { _saveStatus = status; _isError = isError; });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Determine status indicator color and icon
+    Color? statusColor;
+    IconData? statusIcon;
+    if (_saveStatus != null) {
+      if (_isError) {
+        statusColor = theme.colorScheme.error;
+        statusIcon  = Icons.error_outline;
+      } else if (_saveStatus == 'Saving…') {
+        statusColor = theme.colorScheme.onSurfaceVariant;
+        statusIcon  = Icons.sync;
+      } else {
+        // "Saved"
+        statusColor = theme.colorScheme.primary;
+        statusIcon  = Icons.check_circle_outline;
+      }
+    }
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       insetPadding:
@@ -152,6 +182,27 @@ class _SettingsDialog extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(width: 12),
+                // Save status badge
+                if (_saveStatus != null)
+                  AnimatedOpacity(
+                    opacity: 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 13, color: statusColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          _saveStatus!,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: statusColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close, size: 16),
@@ -164,7 +215,7 @@ class _SettingsDialog extends StatelessWidget {
             ),
           ),
           // Settings content
-          const Flexible(child: SettingsPage()),
+          Flexible(child: SettingsPage(onStatus: _onStatus)),
         ],
       ),
     );
