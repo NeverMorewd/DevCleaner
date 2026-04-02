@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
 use crate::utils::dir_size;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 const VSCODE_ROAMING_DIRS: &[&str] = &["Code", "Cursor", "Windsurf", "trae-cn", "lingma"];
 
