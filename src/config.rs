@@ -1,0 +1,135 @@
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Config {
+    pub general: GeneralConfig,
+    pub scanners: ScannersConfig,
+    pub artifacts: ArtifactsConfig,
+    #[serde(default)]
+    pub filter: FilterConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct FilterConfig {
+    /// Regex patterns matched against full path string. Matching items are excluded from results.
+    #[serde(default)]
+    pub whitelist_patterns: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GeneralConfig {
+    pub confirm_before_delete: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ScannersConfig {
+    pub nuget: bool,
+    pub cargo: bool,
+    pub golang: bool,
+    pub node: bool,
+    pub pip: bool,
+    pub maven: bool,
+    pub gradle: bool,
+    pub cpp_vcpkg: bool,
+    pub cpp_conan: bool,
+    pub build_artifacts: bool,
+    pub env_vars: bool,
+    pub dump_files: bool,
+    pub android_sdk: bool,
+    pub ide_cache: bool,
+    pub windows_temp: bool,
+    pub rustup: bool,
+    pub browser_cache: bool,
+    pub flutter_pub: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ArtifactsConfig {
+    // Per-language toggles
+    pub scan_csharp_obj_bin: bool,   // C# obj/ bin/
+    pub scan_rust_target: bool,      // Rust target/
+    pub scan_node_modules: bool,     // node_modules/
+    pub scan_frontend_dist: bool,    // .next/ .nuxt/ .svelte-kit/ dist/ etc.
+    pub scan_java_build: bool,       // Maven target/ Gradle build/ Android build/
+    pub scan_python_cache: bool,     // __pycache__/ .pytest_cache/ .mypy_cache/ build/ dist/
+    pub scan_cmake_build: bool,      // CMakeFiles/ cmake-build-*/ build/ out/ (C/C++)
+    pub scan_flutter_build: bool,    // Flutter build/ .dart_tool/
+    pub scan_go_vendor: bool,        // Go vendor/
+    /// Additional project roots to scan (auto-discovery is always on)
+    pub project_roots: Vec<String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            general: GeneralConfig {
+                confirm_before_delete: true,
+            },
+            scanners: ScannersConfig {
+                nuget: true,
+                cargo: true,
+                golang: true,
+                node: true,
+                pip: true,
+                maven: true,
+                gradle: true,
+                cpp_vcpkg: false,
+                cpp_conan: false,
+                build_artifacts: true,
+                env_vars: true,
+                dump_files: true,
+                android_sdk: true,
+                ide_cache: true,
+                windows_temp: true,
+                rustup: true,
+                browser_cache: true,
+                flutter_pub: true,
+            },
+            artifacts: ArtifactsConfig {
+                scan_csharp_obj_bin: true,
+                scan_rust_target: true,
+                scan_node_modules: false,
+                scan_frontend_dist: true,
+                scan_java_build: true,
+                scan_python_cache: true,
+                scan_cmake_build: true,
+                scan_flutter_build: true,
+                scan_go_vendor: false,
+                project_roots: Vec::new(),
+            },
+            filter: FilterConfig::default(),
+        }
+    }
+}
+
+impl Config {
+    pub fn config_path() -> Option<PathBuf> {
+        dirs::config_dir().map(|d| d.join("devcleaner").join("config.toml"))
+    }
+
+    pub fn load() -> Result<Self> {
+        let path = match Self::config_path() {
+            Some(p) => p,
+            None => return Ok(Self::default()),
+        };
+        if !path.exists() {
+            return Ok(Self::default());
+        }
+        let content = std::fs::read_to_string(&path)?;
+        let config: Config = toml::from_str(&content)?;
+        Ok(config)
+    }
+
+    pub fn save(&self) -> Result<()> {
+        let path = Self::config_path()
+            .ok_or_else(|| anyhow::anyhow!("Cannot determine config path"))?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let content = toml::to_string_pretty(self)?;
+        std::fs::write(&path, content)?;
+        Ok(())
+    }
+}

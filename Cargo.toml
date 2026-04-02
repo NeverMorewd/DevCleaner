@@ -1,0 +1,40 @@
+[package]
+name = "dev-cleaner"
+version = "0.1.0"
+edition = "2021"
+description = "A blazing-fast CLI tool to reclaim disk space by cleaning dev package caches and build artifacts"
+authors = ["DevCleaner Contributors"]
+license = "MIT"
+repository = "https://github.com/wangd/dev-cleaner"
+readme = "README.md"
+keywords = ["cli", "cleanup", "package-manager", "cache", "developer-tools"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "devcleaner"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "color"] }
+indicatif = "0.17"
+console = "0.15"
+dialoguer = { version = "0.11", features = ["fuzzy-select"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+walkdir = "2"
+anyhow = "1"
+humansize = "2"
+semver = "1"
+dirs = "5"
+comfy-table = "7"
+regex = "1"
+serde_json = "1"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1

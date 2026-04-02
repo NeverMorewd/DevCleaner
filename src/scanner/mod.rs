@@ -1,0 +1,121 @@
+pub mod android;
+pub mod artifacts;
+pub mod browser;
+pub mod cargo_scan;
+pub mod cpp;
+pub mod dumps;
+pub mod envvars;
+pub mod flutter_pub;
+pub mod golang;
+pub mod gradle;
+pub mod ide_cache;
+pub mod maven;
+pub mod node;
+pub mod nuget;
+pub mod pip;
+pub mod rustup;
+pub mod windows_temp;
+
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+use crate::config::Config;
+use crate::types::ScanResult;
+
+pub fn run_all_scanners(
+    config: &Config,
+    mut progress: impl FnMut(&str),
+    abort: &Arc<AtomicBool>,
+) -> Vec<ScanResult> {
+    // Compile whitelist regexes once up front
+    let whitelist_regexes: Vec<regex::Regex> = config
+        .filter
+        .whitelist_patterns
+        .iter()
+        .filter_map(|p| regex::Regex::new(p).ok())
+        .collect();
+
+    let mut results = Vec::new();
+
+    macro_rules! maybe_scan {
+        ($enabled:expr, $scanner:expr, $label:expr) => {
+            if $enabled {
+                if abort.load(Ordering::Relaxed) {
+                    return results;
+                }
+                progress($label);
+                let mut result = $scanner;
+                // Apply whitelist filter
+                if !whitelist_regexes.is_empty() {
+                    result.items.retain(|item| {
+                        let path_str = item.path.to_string_lossy();
+                        !whitelist_regexes.iter().any(|re| re.is_match(&path_str))
+                    });
+                    result.total_size = result.items.iter().map(|i| i.size).sum();
+                }
+                results.push(result);
+            }
+        };
+    }
+
+    maybe_scan!(config.scanners.nuget, nuget::scan(config), "NuGet");
+    maybe_scan!(config.scanners.cargo, cargo_scan::scan(config), "Cargo");
+    maybe_scan!(config.scanners.golang, golang::scan(config), "Go Modules");
+    maybe_scan!(config.scanners.node, node::scan(config), "Node.js");
+    maybe_scan!(config.scanners.pip, pip::scan(config), "pip / uv");
+    maybe_scan!(config.scanners.maven, maven::scan(config), "Maven");
+    maybe_scan!(config.scanners.gradle, gradle::scan(config), "Gradle");
+    maybe_scan!(
+        config.scanners.cpp_vcpkg,
+        cpp::scan_vcpkg(config),
+        "vcpkg"
+    );
+    maybe_scan!(
+        config.scanners.cpp_conan,
+        cpp::scan_conan(config),
+        "Conan"
+    );
+    maybe_scan!(
+        config.scanners.build_artifacts,
+        artifacts::scan(config),
+        "Build Artifacts"
+    );
+    maybe_scan!(
+        config.scanners.env_vars,
+        envvars::scan(config),
+        "Environment Variables"
+    );
+    maybe_scan!(
+        config.scanners.dump_files,
+        dumps::scan(config),
+        "Dump Files"
+    );
+    maybe_scan!(
+        config.scanners.android_sdk,
+        android::scan(config),
+        "Android SDK"
+    );
+    maybe_scan!(
+        config.scanners.ide_cache,
+        ide_cache::scan(config),
+        "IDE Caches"
+    );
+    maybe_scan!(
+        config.scanners.windows_temp,
+        windows_temp::scan(config),
+        "Windows Temp"
+    );
+    maybe_scan!(config.scanners.rustup, rustup::scan(config), "Rustup");
+    maybe_scan!(
+        config.scanners.browser_cache,
+        browser::scan(config),
+        "Browser Caches"
+    );
+    maybe_scan!(
+        config.scanners.flutter_pub,
+        flutter_pub::scan(config),
+        "Flutter/Dart Pub"
+    );
+
+    results
+}
