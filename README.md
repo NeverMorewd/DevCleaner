@@ -1,15 +1,17 @@
-# DevCleaner
+<div align="center">
+  <img src="assets/logo.png" width="120" alt="DevCleaner logo" />
+  <h1>DevCleaner</h1>
+  <p>Reclaim gigabytes of disk space by scanning and cleaning stale package caches<br>and build artifacts across every major development ecosystem.</p>
 
-[![CI](https://github.com/your-username/dev-cleaner/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/dev-cleaner/actions/workflows/ci.yml)
-[![Release](https://github.com/your-username/dev-cleaner/actions/workflows/release.yml/badge.svg)](https://github.com/your-username/dev-cleaner/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/your-username/dev-cleaner/releases)
-
-> Reclaim gigabytes of disk space by scanning and cleaning stale package caches and build artifacts across every major development ecosystem — with a modern Flutter desktop GUI.
+  [![CI](https://github.com/NeverMorewd/DevCleaner/actions/workflows/ci.yml/badge.svg)](https://github.com/NeverMorewd/DevCleaner/actions/workflows/ci.yml)
+  [![Release](https://github.com/NeverMorewd/DevCleaner/actions/workflows/release.yml/badge.svg)](https://github.com/NeverMorewd/DevCleaner/releases)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+  [![Platform: Windows](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/NeverMorewd/DevCleaner/releases)
+</div>
 
 ---
 
-## DISCLAIMER
+## ⚠️ DISCLAIMER
 
 **USE AT YOUR OWN RISK.**
 
@@ -27,7 +29,7 @@ This tool permanently deletes files from your computer. While it is designed to 
 ### Scanners
 
 | Scanner | What it cleans |
-|---------|---------------|
+|---------|----------------|
 | **.NET / NuGet** | Old package versions in `~/.nuget/packages`, HTTP cache |
 | **Rust / Cargo** | Old `.crate` files and extracted sources in `~/.cargo/registry` |
 | **Go** | Old module versions in `~/go/pkg/mod`, build cache |
@@ -49,9 +51,9 @@ This tool permanently deletes files from your computer. While it is designed to 
 - **Ignore list** — configure glob/regex patterns to skip specific folders or files
 - **Version-aware** — for package stores (NuGet, Cargo, Maven, Gradle, Go), keeps the latest version and removes older ones
 - **Live progress** — real-time scan progress with spinner and status updates
-- **Settings panel** — toggle each scanner on/off, manage project roots and ignore patterns
+- **Settings panel** — toggle each scanner on/off, manage project roots and ignore patterns; auto-saved on every change
 
-### Safety measures
+### Safety Measures
 
 - Protected paths (e.g., `WindowsApps`, `WinGet`, `System32`) are never flagged, even if they appear non-existent
 - Temp directories (`%TEMP%`, `C:\Windows\Temp`) have their **contents** cleared but the directory itself is never deleted
@@ -63,7 +65,7 @@ This tool permanently deletes files from your computer. While it is designed to 
 
 ### Pre-built installer (recommended)
 
-Download `DevCleanerSetup-vX.X.X.exe` from the [Releases page](https://github.com/your-username/dev-cleaner/releases) and run it.
+Download `DevCleanerSetup-vX.X.X.exe` from the [Releases page](https://github.com/NeverMorewd/DevCleaner/releases) and run it.
 
 ### Build from source
 
@@ -73,8 +75,8 @@ Download `DevCleanerSetup-vX.X.X.exe` from the [Releases page](https://github.co
 - [Inno Setup 6](https://jrsoftware.org/isdl.php) (for building the installer)
 
 ```powershell
-git clone https://github.com/your-username/dev-cleaner
-cd dev-cleaner
+git clone https://github.com/NeverMorewd/DevCleaner
+cd DevCleaner
 
 # Build the Rust backend
 cargo build --release
