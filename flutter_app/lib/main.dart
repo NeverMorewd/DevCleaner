@@ -4,9 +4,7 @@ import 'package:window_manager/window_manager.dart';
 import 'services/daemon_service.dart';
 import 'providers/scan_provider.dart';
 import 'providers/config_provider.dart';
-import 'pages/home_page.dart';
-import 'pages/results_page.dart';
-import 'pages/settings_page.dart';
+import 'pages/scan_page.dart';
 import 'widgets/app_title_bar.dart';
 import 'widgets/scan_overlay.dart';
 
@@ -62,14 +60,14 @@ class DevCleanerApp extends StatelessWidget {
             brightness: Brightness.light,
           ).copyWith(
             surface: const Color(0xFFF4F7F9),
-            surfaceContainer: const Color(0xFFECF0F4),
-            surfaceContainerHighest: const Color(0xFFDDE4EC),
+            surfaceContainer: const Color(0xFFECF1F5),
+            surfaceContainerHighest: const Color(0xFFDFE8EF),
           ),
           useMaterial3: true,
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               side: const BorderSide(color: Color(0xFFDDE4EC)),
             ),
           ),
@@ -84,10 +82,10 @@ class DevCleanerApp extends StatelessWidget {
             surfaceContainerHighest: const Color(0xFF223040),
           ),
           useMaterial3: true,
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               side: const BorderSide(color: Color(0xFF2A3A50)),
             ),
           ),
@@ -99,48 +97,12 @@ class DevCleanerApp extends StatelessWidget {
   }
 }
 
-class AppShell extends StatefulWidget {
+class AppShell extends StatelessWidget {
   const AppShell({super.key});
-
-  @override
-  State<AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends HomePageNavigatorState<AppShell> {
-  int _index = 0;
-
-  @override
-  void switchToResults() => setState(() => _index = 1);
 
   @override
   Widget build(BuildContext context) {
     final scan = context.watch<ScanProvider>();
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    const destinations = [
-      NavigationRailDestination(
-        icon: Icon(Icons.home_outlined),
-        selectedIcon: Icon(Icons.home),
-        label: Text('Home'),
-      ),
-      NavigationRailDestination(
-        icon: Icon(Icons.list_alt_outlined),
-        selectedIcon: Icon(Icons.list_alt),
-        label: Text('Results'),
-      ),
-      NavigationRailDestination(
-        icon: Icon(Icons.settings_outlined),
-        selectedIcon: Icon(Icons.settings),
-        label: Text('Settings'),
-      ),
-    ];
-
-    final pages = [
-      const HomePage(),
-      const ResultsPage(),
-      const SettingsPage(),
-    ];
 
     return Scaffold(
       body: Column(
@@ -149,34 +111,7 @@ class _AppShellState extends HomePageNavigatorState<AppShell> {
           Expanded(
             child: Stack(
               children: [
-                Row(
-                  children: [
-                    NavigationRail(
-                      selectedIndex: _index,
-                      onDestinationSelected: (i) =>
-                          setState(() => _index = i),
-                      labelType: NavigationRailLabelType.all,
-                      destinations: destinations,
-                      backgroundColor: isDark
-                          ? const Color(0xFF0F1923)
-                          : theme.colorScheme.surfaceContainer,
-                      indicatorColor:
-                          theme.colorScheme.primary.withValues(alpha: 0.15),
-                      selectedIconTheme: IconThemeData(
-                        color: theme.colorScheme.primary,
-                      ),
-                      unselectedIconTheme: IconThemeData(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: theme.dividerColor.withValues(alpha: 0.5),
-                    ),
-                    Expanded(child: pages[_index]),
-                  ],
-                ),
+                const ScanPage(),
                 if (scan.state == ScanState.scanning)
                   ScanOverlay(scan: scan),
               ],

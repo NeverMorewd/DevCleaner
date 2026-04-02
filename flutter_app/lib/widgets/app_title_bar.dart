@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+import '../pages/settings_page.dart';
 
 class AppTitleBar extends StatefulWidget {
   const AppTitleBar({super.key});
@@ -35,13 +36,20 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
   @override
   void onWindowUnmaximize() => setState(() => _isMaximized = false);
 
+  void _openSettings(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black38,
+      builder: (ctx) => const _SettingsDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final bg = isDark
-        ? const Color(0xFF0F1923)
-        : theme.colorScheme.surfaceContainer;
+    final bg =
+        isDark ? const Color(0xFF0F1923) : theme.colorScheme.surfaceContainer;
 
     return DragToMoveArea(
       child: Container(
@@ -51,7 +59,6 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(width: 14),
-            // App icon
             SizedBox(
               width: 20,
               height: 20,
@@ -69,6 +76,19 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
               ),
             ),
             const Spacer(),
+            // Settings button
+            _WinButton(
+              icon: Icons.settings_outlined,
+              tooltip: 'Settings',
+              onTap: () => _openSettings(context),
+              iconSize: 16,
+            ),
+            Container(
+              width: 1,
+              height: 20,
+              color: theme.dividerColor.withValues(alpha: 0.5),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+            ),
             _WinButton(
               icon: Icons.remove,
               tooltip: 'Minimize',
@@ -90,6 +110,62 @@ class _AppTitleBarState extends State<AppTitleBar> with WindowListener {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Settings dialog ────────────────────────────────────────────────────────────
+
+class _SettingsDialog extends StatelessWidget {
+  const _SettingsDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      insetPadding:
+          const EdgeInsets.symmetric(horizontal: 120, vertical: 48),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Dialog title bar
+          Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainer,
+              border: Border(
+                  bottom: BorderSide(
+                      color: theme.dividerColor.withValues(alpha: 0.5))),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.settings_outlined,
+                    size: 16, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Settings',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  onPressed: () => Navigator.pop(context),
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ),
+          // Settings content
+          const Flexible(child: SettingsPage()),
+        ],
       ),
     );
   }
@@ -145,7 +221,7 @@ class _WinButtonState extends State<_WinButton> {
               size: widget.iconSize,
               color: (_hovered && widget.isClose)
                   ? Colors.white
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.72),
             ),
           ),
         ),
@@ -165,24 +241,17 @@ class _BroomIconPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Handle
     final handlePaint = Paint()
       ..color = color
       ..strokeWidth = w * 0.13
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-
     canvas.drawLine(
-      Offset(w * 0.73, h * 0.07),
-      Offset(w * 0.36, h * 0.56),
-      handlePaint,
-    );
+        Offset(w * 0.73, h * 0.07), Offset(w * 0.36, h * 0.56), handlePaint);
 
-    // Brush head
     final headPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-
     final path = Path()
       ..moveTo(w * 0.06, h * 0.60)
       ..lineTo(w * 0.50, h * 0.48)
@@ -192,7 +261,6 @@ class _BroomIconPainter extends CustomPainter {
       ..close();
     canvas.drawPath(path, headPaint);
 
-    // Dust dots
     final dotPaint = Paint()
       ..color = color.withValues(alpha: 0.5)
       ..style = PaintingStyle.fill;
