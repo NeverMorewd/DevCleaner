@@ -134,10 +134,15 @@ fn broadcast_env_change() {
     use std::os::windows::ffi::OsStrExt;
 
     // Raw FFI declarations — avoids adding a windows-sys direct dependency.
+    #[allow(clippy::upper_case_acronyms)]
     type HWND = *mut std::ffi::c_void;
+    #[allow(clippy::upper_case_acronyms)]
     type WPARAM = usize;
+    #[allow(clippy::upper_case_acronyms)]
     type LPARAM = isize;
+    #[allow(clippy::upper_case_acronyms)]
     type LRESULT = isize;
+    #[allow(clippy::upper_case_acronyms)]
     type UINT = u32;
     #[allow(non_camel_case_types)]
     type PDWORD_PTR = *mut usize;

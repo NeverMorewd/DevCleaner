@@ -133,6 +133,7 @@ pub fn print_item_details(items: &[CleanItem]) {
     println!("{table}");
 }
 
+#[allow(dead_code)]
 pub fn format_size_human(size: u64) -> String {
     format_size(size, BINARY)
 }

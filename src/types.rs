@@ -80,6 +80,7 @@ impl ScanResult {
         self.items.push(item);
     }
 
+    #[allow(dead_code)]
     pub fn with_error(scanner_name: &str, err: &str) -> Self {
         let mut r = Self::new(scanner_name);
         r.error = Some(err.to_string());

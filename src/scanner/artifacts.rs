@@ -100,11 +100,12 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
         let parent = path.parent().unwrap_or(dir);
 
         // ── C# / .NET ────────────────────────────────────────────────────────
-        if config.artifacts.scan_csharp_obj_bin && (name == "obj" || name == "bin") {
-            if has_any(parent, &[".csproj", ".vbproj", ".fsproj", ".sln"]) {
-                add_artifact(&path, &format!(".NET build artifact ({})", name), "C# / .NET", result);
-                continue; // don't recurse inside
-            }
+        if config.artifacts.scan_csharp_obj_bin
+            && (name == "obj" || name == "bin")
+            && has_any(parent, &[".csproj", ".vbproj", ".fsproj", ".sln"])
+        {
+            add_artifact(&path, &format!(".NET build artifact ({})", name), "C# / .NET", result);
+            continue; // don't recurse inside
         }
 
         // ── Rust ─────────────────────────────────────────────────────────────
