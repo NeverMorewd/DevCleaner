@@ -65,16 +65,8 @@ pub fn run_all_scanners(
     maybe_scan!(config.scanners.pip, pip::scan(config), "pip / uv");
     maybe_scan!(config.scanners.maven, maven::scan(config), "Maven");
     maybe_scan!(config.scanners.gradle, gradle::scan(config), "Gradle");
-    maybe_scan!(
-        config.scanners.cpp_vcpkg,
-        cpp::scan_vcpkg(config),
-        "vcpkg"
-    );
-    maybe_scan!(
-        config.scanners.cpp_conan,
-        cpp::scan_conan(config),
-        "Conan"
-    );
+    maybe_scan!(config.scanners.cpp_vcpkg, cpp::scan_vcpkg(config), "vcpkg");
+    maybe_scan!(config.scanners.cpp_conan, cpp::scan_conan(config), "Conan");
     maybe_scan!(
         config.scanners.build_artifacts,
         artifacts::scan(config),

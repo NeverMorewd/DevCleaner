@@ -154,7 +154,10 @@ fn collect_wer_dirs() -> Vec<(PathBuf, &'static str)> {
             .join("Microsoft")
             .join("Windows")
             .join("WER");
-        dirs.push((wer_base.join("ReportArchive"), "WER report (system archive)"));
+        dirs.push((
+            wer_base.join("ReportArchive"),
+            "WER report (system archive)",
+        ));
         dirs.push((wer_base.join("ReportQueue"), "WER report (system queue)"));
     }
 

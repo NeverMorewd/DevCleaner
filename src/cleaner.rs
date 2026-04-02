@@ -34,15 +34,18 @@ fn delete_env_var(item: &CleanItem) -> Result<()> {
             .ok_or_else(|| anyhow::anyhow!("Missing registry_info for InvalidEnvVar item"))?;
 
         let key = open_env_key_write(&info.scope)?;
-        key.delete_value(&info.var_name)
-            .map_err(|e| anyhow::anyhow!("Failed to delete registry value '{}': {}", info.var_name, e))?;
+        key.delete_value(&info.var_name).map_err(|e| {
+            anyhow::anyhow!("Failed to delete registry value '{}': {}", info.var_name, e)
+        })?;
 
         broadcast_env_change();
         Ok(())
     }
     #[cfg(not(windows))]
     {
-        Err(anyhow::anyhow!("Registry operations not supported on this platform"))
+        Err(anyhow::anyhow!(
+            "Registry operations not supported on this platform"
+        ))
     }
 }
 
@@ -91,17 +94,28 @@ fn remove_path_entry(item: &CleanItem) -> Result<()> {
 
         // Write the cleaned PATH back, preserving the original registry type.
         use winreg::RegValue;
-        let mut bytes: Vec<u8> = new_val.encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
+        let mut bytes: Vec<u8> = new_val
+            .encode_utf16()
+            .flat_map(|c| c.to_le_bytes())
+            .collect();
         bytes.extend_from_slice(&[0u8, 0u8]); // null terminator
-        key.set_raw_value(&info.var_name, &RegValue { bytes, vtype: reg_type })
-            .map_err(|e| anyhow::anyhow!("Failed to write '{}' to registry: {}", info.var_name, e))?;
+        key.set_raw_value(
+            &info.var_name,
+            &RegValue {
+                bytes,
+                vtype: reg_type,
+            },
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to write '{}' to registry: {}", info.var_name, e))?;
 
         broadcast_env_change();
         Ok(())
     }
     #[cfg(not(windows))]
     {
-        Err(anyhow::anyhow!("Registry operations not supported on this platform"))
+        Err(anyhow::anyhow!(
+            "Registry operations not supported on this platform"
+        ))
     }
 }
 
@@ -119,10 +133,14 @@ fn open_env_key_write(scope: &crate::types::RegScope) -> Result<winreg::RegKey> 
         }
         RegScope::System => {
             let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let sys_path =
-                r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment";
+            let sys_path = r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment";
             hklm.open_subkey_with_flags(sys_path, KEY_READ | KEY_SET_VALUE)
-                .map_err(|e| anyhow::anyhow!("Cannot open HKLM\\…\\Environment for writing (need elevation?): {}", e))
+                .map_err(|e| {
+                    anyhow::anyhow!(
+                        "Cannot open HKLM\\…\\Environment for writing (need elevation?): {}",
+                        e
+                    )
+                })
         }
     }
 }

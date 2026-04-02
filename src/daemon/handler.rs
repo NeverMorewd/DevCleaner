@@ -74,11 +74,7 @@ pub fn run() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn handle_get_config(
-    id: Option<u64>,
-    state: &Arc<Mutex<DaemonState>>,
-    write: &impl Fn(&Value),
-) {
+fn handle_get_config(id: Option<u64>, state: &Arc<Mutex<DaemonState>>, write: &impl Fn(&Value)) {
     let config = state.lock().unwrap().config.clone();
     let val = serde_json::to_value(&config).unwrap_or(Value::Null);
     write(&serde_json::to_value(RpcResponse::ok(id, val)).unwrap());
@@ -94,9 +90,7 @@ fn handle_set_config(
         Ok(new_config) => match new_config.save() {
             Ok(()) => {
                 state.lock().unwrap().config = new_config;
-                write(
-                    &serde_json::to_value(RpcResponse::ok(id, json!({"ok": true}))).unwrap(),
-                );
+                write(&serde_json::to_value(RpcResponse::ok(id, json!({"ok": true}))).unwrap());
             }
             Err(e) => {
                 write(
@@ -195,11 +189,7 @@ fn handle_start_scan(
                     }),
                 );
                 let mut out = stdout_clone.lock().unwrap();
-                let _ = writeln!(
-                    out,
-                    "{}",
-                    serde_json::to_string(&notif).unwrap_or_default()
-                );
+                let _ = writeln!(out, "{}", serde_json::to_string(&notif).unwrap_or_default());
                 let _ = out.flush();
             },
             &abort,

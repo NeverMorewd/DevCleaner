@@ -118,7 +118,10 @@ fn scan_src_dirs(registry_src: &std::path::Path, result: &mut ScanResult) {
             if let Some(caps) = re.captures(&dir_name) {
                 let name = caps[1].to_string();
                 let ver = caps[2].to_string();
-                by_name.entry(name).or_default().push((ver, pkg_entry.path()));
+                by_name
+                    .entry(name)
+                    .or_default()
+                    .push((ver, pkg_entry.path()));
             }
         }
 

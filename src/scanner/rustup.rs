@@ -65,15 +65,16 @@ fn scan_toolchains(toolchains_dir: &std::path::Path, result: &mut ScanResult) {
         }
         let name = entry.file_name().to_string_lossy().to_string();
         let (sort_key, group_key) = parse_toolchain_name(&name);
-        groups
-            .entry(group_key)
-            .or_default()
-            .push((sort_key, path));
+        groups.entry(group_key).or_default().push((sort_key, path));
     }
 
     for (group_key, mut toolchains) in groups {
         // For stable, keep 1 (newest). For nightly, keep 2.
-        let keep = if group_key.starts_with("nightly") { KEEP_NIGHTLY } else { KEEP_STABLE };
+        let keep = if group_key.starts_with("nightly") {
+            KEEP_NIGHTLY
+        } else {
+            KEEP_STABLE
+        };
         if toolchains.len() <= keep {
             continue;
         }
@@ -109,7 +110,7 @@ fn parse_toolchain_name(name: &str) -> (String, String) {
         return (name.to_string(), name.to_string());
     }
     let channel = parts[0]; // "stable", "nightly", "beta"
-    let rest = parts[1];    // everything after channel-
+    let rest = parts[1]; // everything after channel-
 
     if channel == "nightly" || channel == "beta" {
         // Check if rest starts with a date: YYYY-MM-DD
@@ -139,4 +140,3 @@ fn parse_toolchain_name(name: &str) -> (String, String) {
     // stable or other: no date, group = full name
     (channel.to_string(), name.to_string())
 }
-

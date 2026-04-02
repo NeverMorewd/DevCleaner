@@ -9,10 +9,7 @@ pub fn print_banner() {
         "{}",
         style("=======================================================").cyan()
     );
-    println!(
-        "  {}",
-        style("DevCleaner - Reclaim Your Disk Space").bold()
-    );
+    println!("  {}", style("DevCleaner - Reclaim Your Disk Space").bold());
     println!(
         "{}",
         style("=======================================================").cyan()

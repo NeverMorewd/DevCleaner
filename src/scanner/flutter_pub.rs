@@ -65,10 +65,7 @@ fn scan_hosted_packages(hosted_pub_dev: &PathBuf, result: &mut ScanResult) {
         if let Some(sep) = dir_name.rfind('-') {
             let pkg_name = dir_name[..sep].to_string();
             let version = dir_name[sep + 1..].to_string();
-            packages
-                .entry(pkg_name)
-                .or_default()
-                .push((version, path));
+            packages.entry(pkg_name).or_default().push((version, path));
         }
     }
 

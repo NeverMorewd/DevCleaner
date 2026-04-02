@@ -1,5 +1,5 @@
-mod cli;
 mod cleaner;
+mod cli;
 mod config;
 mod daemon;
 mod display;
@@ -8,13 +8,13 @@ mod types;
 mod utils;
 
 use anyhow::Result;
-use cli::{Cli, Command, ConfigAction};
 use clap::Parser;
-use std::sync::{Arc, atomic::AtomicBool};
+use cli::{Cli, Command, ConfigAction};
 use console::style;
 use dialoguer::{Confirm, MultiSelect, Select};
 use humansize::{format_size, BINARY};
 use indicatif::{ProgressBar, ProgressStyle};
+use std::sync::{atomic::AtomicBool, Arc};
 use std::time::Duration;
 
 fn main() -> Result<()> {
@@ -57,9 +57,7 @@ fn run_scan_only(config: &config::Config) -> Result<()> {
             .default(false)
             .interact()?;
         if show {
-            display::print_item_details(
-                &all_items.into_iter().cloned().collect::<Vec<_>>(),
-            );
+            display::print_item_details(&all_items.into_iter().cloned().collect::<Vec<_>>());
         }
     }
     Ok(())
@@ -103,9 +101,7 @@ fn run_interactive(config: &config::Config, auto_yes: bool) -> Result<()> {
         1 => {
             // Multi-select by scanner
             let selected = MultiSelect::new()
-                .with_prompt(
-                    "Select categories to clean (space to toggle, enter to confirm)",
-                )
+                .with_prompt("Select categories to clean (space to toggle, enter to confirm)")
                 .items(&scanner_labels)
                 .defaults(&vec![true; scanner_labels.len()])
                 .interact()?;
@@ -153,11 +149,9 @@ fn run_interactive(config: &config::Config, auto_yes: bool) -> Result<()> {
     // Clean
     let pb = ProgressBar::new(items_to_clean.len() as u64);
     pb.set_style(
-        ProgressStyle::with_template(
-            "{spinner:.cyan} [{bar:40.cyan/blue}] {pos}/{len} {msg}",
-        )
-        .unwrap()
-        .progress_chars("##-"),
+        ProgressStyle::with_template("{spinner:.cyan} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("##-"),
     );
     pb.enable_steady_tick(Duration::from_millis(100));
 
@@ -210,9 +204,13 @@ fn do_scan(config: &config::Config) -> Vec<types::ScanResult> {
     pb.enable_steady_tick(Duration::from_millis(80));
 
     let abort = Arc::new(AtomicBool::new(false));
-    let results = scanner::run_all_scanners(config, |name| {
-        pb.set_message(name.to_string());
-    }, &abort);
+    let results = scanner::run_all_scanners(
+        config,
+        |name| {
+            pb.set_message(name.to_string());
+        },
+        &abort,
+    );
 
     pb.finish_and_clear();
     results
@@ -249,10 +247,7 @@ fn run_config(config: &mut config::Config, action: Option<ConfigAction>) -> Resu
 
 fn interactive_config_edit(config: &mut config::Config) -> Result<()> {
     display::print_banner();
-    println!(
-        "  {} Configure DevCleaner\n",
-        style(">>").cyan()
-    );
+    println!("  {} Configure DevCleaner\n", style(">>").cyan());
 
     let labels = vec![
         "NuGet (.NET)",
@@ -346,19 +341,21 @@ fn interactive_config_edit(config: &mut config::Config) -> Result<()> {
             config.artifacts.scan_go_vendor,
         ];
         let art_sel = MultiSelect::new()
-            .with_prompt("Select artifact types to scan (auto-discovery enabled for common dev paths)")
+            .with_prompt(
+                "Select artifact types to scan (auto-discovery enabled for common dev paths)",
+            )
             .items(&art_options)
             .defaults(&art_defaults)
             .interact()?;
-        config.artifacts.scan_csharp_obj_bin  = art_sel.contains(&0);
-        config.artifacts.scan_rust_target     = art_sel.contains(&1);
-        config.artifacts.scan_node_modules    = art_sel.contains(&2);
-        config.artifacts.scan_frontend_dist   = art_sel.contains(&3);
-        config.artifacts.scan_java_build      = art_sel.contains(&4);
-        config.artifacts.scan_python_cache    = art_sel.contains(&5);
-        config.artifacts.scan_cmake_build     = art_sel.contains(&6);
-        config.artifacts.scan_flutter_build   = art_sel.contains(&7);
-        config.artifacts.scan_go_vendor       = art_sel.contains(&8);
+        config.artifacts.scan_csharp_obj_bin = art_sel.contains(&0);
+        config.artifacts.scan_rust_target = art_sel.contains(&1);
+        config.artifacts.scan_node_modules = art_sel.contains(&2);
+        config.artifacts.scan_frontend_dist = art_sel.contains(&3);
+        config.artifacts.scan_java_build = art_sel.contains(&4);
+        config.artifacts.scan_python_cache = art_sel.contains(&5);
+        config.artifacts.scan_cmake_build = art_sel.contains(&6);
+        config.artifacts.scan_flutter_build = art_sel.contains(&7);
+        config.artifacts.scan_go_vendor = art_sel.contains(&8);
 
         println!("\n  Auto-discovery scans common paths (~/source/repos, ~/projects, etc.)");
         if !config.artifacts.project_roots.is_empty() {

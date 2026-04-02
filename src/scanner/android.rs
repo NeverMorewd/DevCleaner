@@ -104,10 +104,7 @@ fn scan_platforms(platforms: &std::path::Path, result: &mut ScanResult) {
         if path.is_dir() {
             let name = entry.file_name().to_string_lossy().to_string();
             // Extract numeric API level from "android-NN"
-            let ver_str = name
-                .strip_prefix("android-")
-                .unwrap_or(&name)
-                .to_string();
+            let ver_str = name.strip_prefix("android-").unwrap_or(&name).to_string();
             versions.push((ver_str, path));
         }
     }
@@ -135,4 +132,3 @@ fn scan_platforms(platforms: &std::path::Path, result: &mut ScanResult) {
         });
     }
 }
-

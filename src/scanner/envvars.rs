@@ -84,11 +84,7 @@ fn scan_windows() -> ScanResult {
 }
 
 #[cfg(windows)]
-fn scan_reg_key(
-    key: &winreg::RegKey,
-    scope: RegScope,
-    result: &mut ScanResult,
-) {
+fn scan_reg_key(key: &winreg::RegKey, scope: RegScope, result: &mut ScanResult) {
     use winreg::enums::RegType;
 
     let scope_str = match scope {
@@ -99,12 +95,10 @@ fn scan_reg_key(
     for (name, value) in key.enum_values().flatten() {
         // Only look at REG_SZ and REG_EXPAND_SZ
         let val_str: String = match value.vtype {
-            RegType::REG_SZ | RegType::REG_EXPAND_SZ => {
-                match value.to_string().parse::<String>() {
-                    Ok(s) => s,
-                    Err(_) => continue,
-                }
-            }
+            RegType::REG_SZ | RegType::REG_EXPAND_SZ => match value.to_string().parse::<String>() {
+                Ok(s) => s,
+                Err(_) => continue,
+            },
             _ => continue,
         };
 
@@ -202,10 +196,7 @@ fn check_path_var(
             result.add_item(CleanItem {
                 path: PathBuf::from(entry),
                 size: 0,
-                description: format!(
-                    "PATH entry does not exist ({} scope): {}",
-                    scope_str, entry
-                ),
+                description: format!("PATH entry does not exist ({} scope): {}", scope_str, entry),
                 scanner: SCANNER_NAME.to_string(),
                 item_type: CleanItemType::InvalidPathEntry,
                 package_name: Some("PATH".to_string()),

@@ -48,15 +48,15 @@ pub struct ScannersConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ArtifactsConfig {
     // Per-language toggles
-    pub scan_csharp_obj_bin: bool,   // C# obj/ bin/
-    pub scan_rust_target: bool,      // Rust target/
-    pub scan_node_modules: bool,     // node_modules/
-    pub scan_frontend_dist: bool,    // .next/ .nuxt/ .svelte-kit/ dist/ etc.
-    pub scan_java_build: bool,       // Maven target/ Gradle build/ Android build/
-    pub scan_python_cache: bool,     // __pycache__/ .pytest_cache/ .mypy_cache/ build/ dist/
-    pub scan_cmake_build: bool,      // CMakeFiles/ cmake-build-*/ build/ out/ (C/C++)
-    pub scan_flutter_build: bool,    // Flutter build/ .dart_tool/
-    pub scan_go_vendor: bool,        // Go vendor/
+    pub scan_csharp_obj_bin: bool, // C# obj/ bin/
+    pub scan_rust_target: bool,    // Rust target/
+    pub scan_node_modules: bool,   // node_modules/
+    pub scan_frontend_dist: bool,  // .next/ .nuxt/ .svelte-kit/ dist/ etc.
+    pub scan_java_build: bool,     // Maven target/ Gradle build/ Android build/
+    pub scan_python_cache: bool,   // __pycache__/ .pytest_cache/ .mypy_cache/ build/ dist/
+    pub scan_cmake_build: bool,    // CMakeFiles/ cmake-build-*/ build/ out/ (C/C++)
+    pub scan_flutter_build: bool,  // Flutter build/ .dart_tool/
+    pub scan_go_vendor: bool,      // Go vendor/
     /// Additional project roots to scan (auto-discovery is always on)
     pub project_roots: Vec<String>,
 }
@@ -123,8 +123,8 @@ impl Config {
     }
 
     pub fn save(&self) -> Result<()> {
-        let path = Self::config_path()
-            .ok_or_else(|| anyhow::anyhow!("Cannot determine config path"))?;
+        let path =
+            Self::config_path().ok_or_else(|| anyhow::anyhow!("Cannot determine config path"))?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }

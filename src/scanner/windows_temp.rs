@@ -43,17 +43,17 @@ pub fn scan(_config: &Config) -> ScanResult {
         Ok(None) => {}
         Err(e) => {
             if result.error.is_none() {
-                result.error = Some(format!("C:\\Windows\\SoftwareDistribution\\Download: {}", e));
+                result.error = Some(format!(
+                    "C:\\Windows\\SoftwareDistribution\\Download: {}",
+                    e
+                ));
             }
         }
     }
 
     // IE/Edge legacy cache
     if let Some(local) = dirs::data_local_dir() {
-        let inet_cache = local
-            .join("Microsoft")
-            .join("Windows")
-            .join("INetCache");
+        let inet_cache = local.join("Microsoft").join("Windows").join("INetCache");
         add_cache_item(&inet_cache, "IE/Edge legacy internet cache", &mut result);
 
         // Windows Error Reporting
@@ -89,10 +89,7 @@ fn add_temp_dir_item(path: &Path, description: &str, result: &mut ScanResult) {
     }
 }
 
-fn try_add_temp_dir_item(
-    path: &PathBuf,
-    description: &str,
-) -> Result<Option<CleanItem>, String> {
+fn try_add_temp_dir_item(path: &PathBuf, description: &str) -> Result<Option<CleanItem>, String> {
     if !path.exists() {
         return Ok(None);
     }
@@ -132,10 +129,7 @@ fn add_cache_item(path: &Path, description: &str, result: &mut ScanResult) {
     }
 }
 
-fn try_add_cache_item(
-    path: &PathBuf,
-    description: &str,
-) -> Result<Option<CleanItem>, String> {
+fn try_add_cache_item(path: &PathBuf, description: &str) -> Result<Option<CleanItem>, String> {
     if !path.exists() {
         return Ok(None);
     }

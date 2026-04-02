@@ -92,10 +92,7 @@ fn collect_versioned_dirs(
             if parts.len() == 2 {
                 // Build the full module path relative to base
                 let rel = current.strip_prefix(base).unwrap_or(current);
-                let module_path = rel
-                    .join(parts[0])
-                    .to_string_lossy()
-                    .replace('\\', "/");
+                let module_path = rel.join(parts[0]).to_string_lossy().replace('\\', "/");
                 let ver = parts[1].to_string();
                 result.entry(module_path).or_default().push((ver, path));
             }

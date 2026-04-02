@@ -104,20 +104,24 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
             && (name == "obj" || name == "bin")
             && has_any(parent, &[".csproj", ".vbproj", ".fsproj", ".sln"])
         {
-            add_artifact(&path, &format!(".NET build artifact ({})", name), "C# / .NET", result);
+            add_artifact(
+                &path,
+                &format!(".NET build artifact ({})", name),
+                "C# / .NET",
+                result,
+            );
             continue; // don't recurse inside
         }
 
         // ── Rust ─────────────────────────────────────────────────────────────
-        if config.artifacts.scan_rust_target && name == "target"
-            && has_file(parent, "Cargo.toml")
-        {
+        if config.artifacts.scan_rust_target && name == "target" && has_file(parent, "Cargo.toml") {
             add_artifact(&path, "Rust target/", "Rust", result);
             continue;
         }
 
         // ── Node.js / JS / TS ────────────────────────────────────────────────
-        if config.artifacts.scan_node_modules && name == "node_modules"
+        if config.artifacts.scan_node_modules
+            && name == "node_modules"
             && has_file(parent, "package.json")
         {
             add_artifact(&path, "node_modules", "Node.js", result);
@@ -161,18 +165,14 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
         }
 
         // ── Angular / Vite / generic dist ────────────────────────────────────
-        if config.artifacts.scan_frontend_dist
-            && name == "dist"
-            && has_file(parent, "package.json")
+        if config.artifacts.scan_frontend_dist && name == "dist" && has_file(parent, "package.json")
         {
             add_artifact(&path, "Frontend dist/", "JS/TS", result);
             continue;
         }
 
         // ── Java / Maven ─────────────────────────────────────────────────────
-        if config.artifacts.scan_java_build && name == "target"
-            && has_file(parent, "pom.xml")
-        {
+        if config.artifacts.scan_java_build && name == "target" && has_file(parent, "pom.xml") {
             add_artifact(&path, "Maven target/", "Java/Maven", result);
             continue;
         }
@@ -219,7 +219,12 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 || has_file(parent, "pyproject.toml")
                 || has_file(parent, "setup.cfg"))
         {
-            add_artifact(&path, &format!("Python build artifact ({})", name), "Python", result);
+            add_artifact(
+                &path,
+                &format!("Python build artifact ({})", name),
+                "Python",
+                result,
+            );
             continue;
         }
         if config.artifacts.scan_python_cache && name.ends_with(".egg-info") {
@@ -240,7 +245,12 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 || has_file(parent, "Makefile")
                 || has_file(parent, "meson.build"))
         {
-            add_artifact(&path, &format!("C/C++ build dir ({})", name), "C/C++", result);
+            add_artifact(
+                &path,
+                &format!("C/C++ build dir ({})", name),
+                "C/C++",
+                result,
+            );
             continue;
         }
 
@@ -272,9 +282,7 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
         }
 
         // ── Go vendor ────────────────────────────────────────────────────────
-        if config.artifacts.scan_go_vendor && name == "vendor"
-            && has_file(parent, "go.mod")
-        {
+        if config.artifacts.scan_go_vendor && name == "vendor" && has_file(parent, "go.mod") {
             add_artifact(&path, "Go vendor/", "Go", result);
             continue;
         }
@@ -282,13 +290,7 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
         // ── Skip dirs we should never recurse into ───────────────────────────
         let skip_recurse = matches!(
             name.as_str(),
-            "node_modules"
-                | ".git"
-                | ".svn"
-                | ".hg"
-                | "target"
-                | ".dart_tool"
-                | "__pycache__"
+            "node_modules" | ".git" | ".svn" | ".hg" | "target" | ".dart_tool" | "__pycache__"
         ) || name.starts_with('.');
 
         if skip_recurse {
