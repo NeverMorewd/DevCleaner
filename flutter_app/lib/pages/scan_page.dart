@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/rpc_types.dart';
@@ -532,6 +533,9 @@ class _ScanPageState extends State<ScanPage> {
     final overlay =
         Overlay.of(context).context.findRenderObject()! as RenderBox;
 
+    final isNonFs = item.itemType == 'invalid_env_var' ||
+        item.itemType == 'invalid_path_entry';
+
     final result = await showMenu<String>(
       context: context,
       position: RelativeRect.fromRect(
@@ -541,37 +545,66 @@ class _ScanPageState extends State<ScanPage> {
       shape:
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       elevation: 8,
-      items: [
-        PopupMenuItem(
-          value: 'explorer',
-          height: 36,
-          child: Row(children: [
-            Icon(Icons.folder_open_outlined,
-                size: 15,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(width: 10),
-            const Text('Open in Explorer',
-                style: TextStyle(fontSize: 13)),
-          ]),
-        ),
-        const PopupMenuDivider(height: 1),
-        PopupMenuItem(
-          value: 'whitelist',
-          height: 36,
-          child: Row(children: [
-            Icon(Icons.playlist_add_check,
-                size: 15,
-                color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 10),
-            const Text('Add to whitelist',
-                style: TextStyle(fontSize: 13)),
-          ]),
-        ),
-      ],
+      items: isNonFs
+          ? [
+              PopupMenuItem(
+                value: 'copy',
+                height: 36,
+                child: Row(children: [
+                  Icon(Icons.copy_outlined,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  const Text('Copy to Clipboard',
+                      style: TextStyle(fontSize: 13)),
+                ]),
+              ),
+            ]
+          : [
+              PopupMenuItem(
+                value: 'explorer',
+                height: 36,
+                child: Row(children: [
+                  Icon(Icons.folder_open_outlined,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  const Text('Open in Explorer',
+                      style: TextStyle(fontSize: 13)),
+                ]),
+              ),
+              const PopupMenuDivider(height: 1),
+              PopupMenuItem(
+                value: 'whitelist',
+                height: 36,
+                child: Row(children: [
+                  Icon(Icons.playlist_add_check,
+                      size: 15,
+                      color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 10),
+                  const Text('Add to whitelist',
+                      style: TextStyle(fontSize: 13)),
+                ]),
+              ),
+            ],
     );
 
     if (!context.mounted) return;
     switch (result) {
+      case 'copy':
+        final text = item.itemType == 'invalid_env_var'
+            ? '${item.packageName ?? item.description} = ${item.path}'
+            : item.path;
+        await Clipboard.setData(ClipboardData(text: text));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('Copied to clipboard'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6)),
+          ));
+        }
       case 'explorer':
         final type = FileSystemEntity.typeSync(item.path);
         if (type == FileSystemEntityType.directory) {

@@ -1,3 +1,4 @@
+use crate::detector;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -109,13 +110,59 @@ impl Config {
         dirs::config_dir().map(|d| d.join("devcleaner").join("config.toml"))
     }
 
+    /// Build a first-run default by probing installed ecosystems.
+    /// Scanners are enabled only for ecosystems that are actually present.
+    /// Universally-useful scanners (env_vars, dump_files, windows_temp,
+    /// browser_cache, build_artifacts) are always on.
+    pub fn smart_default() -> Self {
+        let env = detector::detect();
+        Config {
+            general: GeneralConfig {
+                confirm_before_delete: true,
+            },
+            scanners: ScannersConfig {
+                nuget: env.dotnet,
+                cargo: env.rust_cargo,
+                golang: env.go,
+                node: env.node,
+                pip: env.python,
+                maven: env.java,
+                gradle: env.gradle,
+                cpp_vcpkg: env.vcpkg,
+                cpp_conan: env.conan,
+                build_artifacts: true,
+                env_vars: true,
+                dump_files: true,
+                android_sdk: env.android_sdk,
+                ide_cache: env.ide,
+                windows_temp: true,
+                rustup: env.rustup,
+                browser_cache: true,
+                flutter_pub: env.flutter,
+            },
+            artifacts: ArtifactsConfig {
+                scan_csharp_obj_bin: env.dotnet,
+                scan_rust_target: env.rust_cargo,
+                scan_node_modules: false,
+                scan_frontend_dist: env.node,
+                scan_java_build: env.java || env.gradle,
+                scan_python_cache: env.python,
+                scan_cmake_build: env.vcpkg || env.conan,
+                scan_flutter_build: env.flutter,
+                scan_go_vendor: false,
+                project_roots: Vec::new(),
+            },
+            filter: FilterConfig::default(),
+        }
+    }
+
     pub fn load() -> Result<Self> {
         let path = match Self::config_path() {
             Some(p) => p,
-            None => return Ok(Self::default()),
+            None => return Ok(Self::smart_default()),
         };
         if !path.exists() {
-            return Ok(Self::default());
+            return Ok(Self::smart_default());
         }
         let content = std::fs::read_to_string(&path)?;
         let config: Config = toml::from_str(&content)?;

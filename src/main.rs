@@ -2,6 +2,7 @@ mod cleaner;
 mod cli;
 mod config;
 mod daemon;
+mod detector;
 mod display;
 mod locking;
 mod scanner;
