@@ -206,16 +206,9 @@ class ScanProvider extends ChangeNotifier {
     _lastDeleteErrors = [];
     notifyListeners();
 
-    // Track which paths succeed via progress notifications
-    final successPaths = <String>{};
     final subscription = _daemon.deleteProgress.listen((params) {
       _deleteProgress = (params['items_done'] as num? ?? 0).toInt();
       _freedBytes = (params['freed_bytes'] as num? ?? 0).toInt();
-      // A null 'error' field means this item was deleted successfully
-      if (params['error'] == null) {
-        final p = params['path'] as String?;
-        if (p != null) successPaths.add(p);
-      }
       notifyListeners();
     });
 
@@ -223,14 +216,17 @@ class ScanProvider extends ChangeNotifier {
       final paths = selected.map((i) => i.path).toList();
       final resp = await _daemon.deleteItems(_scanId!, paths);
 
-      // Parse errors from final response
-      final result = resp['result'] as Map<String, dynamic>? ?? {};
+      // Guard: if RPC itself failed, don't touch the item list
+      if (resp['result'] == null) return;
+
+      // Parse per-item errors from the final response
+      final result = resp['result'] as Map<String, dynamic>;
       final rawErrors = result['errors'] as List<dynamic>? ?? [];
       _lastDeleteErrors = rawErrors
           .map((e) => DeleteError.fromJson(e as Map<String, dynamic>))
           .toList();
 
-      // Remove only successfully deleted items from the result list
+      // Remove only successfully deleted items; keep failures in the list
       final failedPaths = _lastDeleteErrors.map((e) => e.path).toSet();
       for (final group in _groups) {
         group.items.removeWhere(

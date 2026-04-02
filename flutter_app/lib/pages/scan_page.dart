@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -18,22 +19,24 @@ typedef _Def = ({
 });
 
 const List<_Def> _kScanners = [
-  (key: 'nuget',           name: 'NuGet',        sub: '.NET',           icon: Icons.widgets_outlined,      color: Color(0xFF512BD4)),
-  (key: 'cargo',           name: 'Cargo',         sub: 'Rust',           icon: Icons.memory,                color: Color(0xFFCE422B)),
-  (key: 'golang',          name: 'Go Modules',    sub: 'Go',             icon: Icons.cloud_queue,           color: Color(0xFF00ADD8)),
-  (key: 'node',            name: 'Node.js',       sub: 'npm / yarn',     icon: Icons.hub,                   color: Color(0xFF339933)),
-  (key: 'pip',             name: 'pip / uv',      sub: 'Python',         icon: Icons.code,                  color: Color(0xFF3776AB)),
-  (key: 'maven',           name: 'Maven',         sub: 'Java',           icon: Icons.inventory_2_outlined,  color: Color(0xFFC71A36)),
-  (key: 'gradle',          name: 'Gradle',        sub: 'Java / Android', icon: Icons.construction,          color: Color(0xFF1BA9AC)),
-  (key: 'build_artifacts', name: 'Artifacts',     sub: 'Build dirs',     icon: Icons.folder_delete_outlined,color: Color(0xFF607D8B)),
-  (key: 'env_vars',        name: 'Env Vars',      sub: 'PATH issues',    icon: Icons.settings_suggest,      color: Color(0xFFEF6C00)),
-  (key: 'dump_files',      name: 'Dump Files',    sub: 'Crash logs',     icon: Icons.warning_amber_rounded, color: Color(0xFF6D4C41)),
-  (key: 'android_sdk',     name: 'Android SDK',   sub: 'Old SDKs',       icon: Icons.android,               color: Color(0xFF3DDC84)),
-  (key: 'ide_cache',       name: 'IDE Caches',    sub: 'JetBrains / VS', icon: Icons.developer_mode,        color: Color(0xFFE91E8C)),
-  (key: 'windows_temp',    name: 'Win Temp',      sub: 'Temp files',     icon: Icons.auto_delete,           color: Color(0xFF0078D4)),
-  (key: 'rustup',          name: 'Rustup',        sub: 'Old toolchains', icon: Icons.system_update_alt,     color: Color(0xFFBF360C)),
-  (key: 'browser_cache',   name: 'Browser Cache', sub: 'Chrome / Edge',  icon: Icons.public,                color: Color(0xFF1A73E8)),
-  (key: 'flutter_pub',     name: 'Flutter / Dart',sub: 'Pub cache',      icon: Icons.flutter_dash,          color: Color(0xFF02569B)),
+  (key: 'nuget',           name: 'NuGet',        sub: '.NET',           icon: Icons.widgets_outlined,            color: Color(0xFF512BD4)),
+  (key: 'cargo',           name: 'Cargo',         sub: 'Rust',           icon: Icons.memory,                      color: Color(0xFFCE422B)),
+  (key: 'golang',          name: 'Go Modules',    sub: 'Go',             icon: Icons.cloud_queue,                 color: Color(0xFF00ADD8)),
+  (key: 'node',            name: 'Node.js',       sub: 'npm / yarn',     icon: Icons.hub,                         color: Color(0xFF339933)),
+  (key: 'pip',             name: 'pip / uv',      sub: 'Python',         icon: Icons.code,                        color: Color(0xFF3776AB)),
+  (key: 'maven',           name: 'Maven',         sub: 'Java',           icon: Icons.inventory_2_outlined,        color: Color(0xFFC71A36)),
+  (key: 'gradle',          name: 'Gradle',        sub: 'Java / Android', icon: Icons.construction,                color: Color(0xFF1BA9AC)),
+  (key: 'cpp_vcpkg',       name: 'vcpkg',         sub: 'C++',            icon: Icons.build_circle_outlined,       color: Color(0xFF6E4C13)),
+  (key: 'cpp_conan',       name: 'Conan',         sub: 'C++',            icon: Icons.settings_input_component,    color: Color(0xFF1F9FD5)),
+  (key: 'build_artifacts', name: 'Artifacts',     sub: 'Build dirs',     icon: Icons.folder_delete_outlined,      color: Color(0xFF607D8B)),
+  (key: 'env_vars',        name: 'Env Vars',      sub: 'PATH issues',    icon: Icons.settings_suggest,            color: Color(0xFFEF6C00)),
+  (key: 'dump_files',      name: 'Dump Files',    sub: 'Crash logs',     icon: Icons.warning_amber_rounded,       color: Color(0xFF6D4C41)),
+  (key: 'android_sdk',     name: 'Android SDK',   sub: 'Old SDKs',       icon: Icons.android,                     color: Color(0xFF3DDC84)),
+  (key: 'ide_cache',       name: 'IDE Caches',    sub: 'JetBrains / VS', icon: Icons.developer_mode,              color: Color(0xFFE91E8C)),
+  (key: 'windows_temp',    name: 'Win Temp',      sub: 'Temp files',     icon: Icons.auto_delete,                 color: Color(0xFF0078D4)),
+  (key: 'rustup',          name: 'Rustup',        sub: 'Old toolchains', icon: Icons.system_update_alt,           color: Color(0xFFBF360C)),
+  (key: 'browser_cache',   name: 'Browser Cache', sub: 'Chrome / Edge',  icon: Icons.public,                      color: Color(0xFF1A73E8)),
+  (key: 'flutter_pub',     name: 'Flutter / Dart',sub: 'Pub cache',      icon: Icons.flutter_dash,                color: Color(0xFF02569B)),
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -48,9 +51,20 @@ class _ScanPageState extends State<ScanPage> {
   bool _scannersExpanded = true;
   bool _resultsExpanded  = true;
   final _searchCtrl = TextEditingController();
+  Timer? _configSaveTimer;
+
+  /// Debounced save — called whenever a scanner toggle changes.
+  /// Sends the updated config to the Rust daemon so the next scan uses it.
+  void _scheduleConfigSave(ConfigProvider config) {
+    _configSaveTimer?.cancel();
+    _configSaveTimer = Timer(const Duration(milliseconds: 400), () {
+      config.saveToFile().catchError((_) {});
+    });
+  }
 
   @override
   void dispose() {
+    _configSaveTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -170,15 +184,9 @@ class _ScanPageState extends State<ScanPage> {
             ),
             const SizedBox(width: 12),
           ],
-          // Abort or Start Scan
-          if (isScanning)
-            _ActionBtn(
-              label: 'Abort',
-              icon: Icons.stop,
-              isDestructive: true,
-              onTap: scan.abortScan,
-            )
-          else
+          // Start Scan button (only when not scanning;
+          // Cancel is inside the ScanOverlay which blocks all other UI)
+          if (!isScanning)
             _ActionBtn(
               label: 'Start Scan',
               icon: Icons.search,
@@ -227,7 +235,11 @@ class _ScanPageState extends State<ScanPage> {
             return _ScannerRow(
               def: s,
               enabled: enabled,
-              onToggle: (v) => config.updateScanner(s.key, v),
+              onToggle: (v) {
+                config.updateScanner(s.key, v);
+                // Persist to daemon so the next scan uses the updated config
+                _scheduleConfigSave(config);
+              },
             );
           },
         );
@@ -1084,54 +1096,33 @@ class _Badge extends StatelessWidget {
   }
 }
 
-/// Small filled action button (Start Scan / Abort)
+/// Small filled action button (Start Scan)
 class _ActionBtn extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  final bool isDestructive;
   const _ActionBtn({
     required this.label,
     required this.icon,
     required this.onTap,
-    this.isDestructive = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fg    = isDestructive ? theme.colorScheme.error : null;
-    final side  = isDestructive
-        ? BorderSide(color: theme.colorScheme.error)
-        : null;
-
     return SizedBox(
       height: 28,
-      child: isDestructive
-          ? OutlinedButton.icon(
-              onPressed: onTap,
-              icon: Icon(icon, size: 13),
-              label: Text(label),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: fg,
-                side: side,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                textStyle: theme.textTheme.labelMedium,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5)),
-              ),
-            )
-          : FilledButton.icon(
-              onPressed: onTap,
-              icon: Icon(icon, size: 13),
-              label: Text(label),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                textStyle: theme.textTheme.labelMedium,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5)),
-              ),
-            ),
+      child: FilledButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 13),
+        label: Text(label),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          textStyle: theme.textTheme.labelMedium,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5)),
+        ),
+      ),
     );
   }
 }
