@@ -7,6 +7,8 @@ import 'providers/config_provider.dart';
 import 'pages/home_page.dart';
 import 'pages/results_page.dart';
 import 'pages/settings_page.dart';
+import 'widgets/app_title_bar.dart';
+import 'widgets/scan_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +21,7 @@ void main() async {
     title: 'DevCleaner',
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.normal,
+    titleBarStyle: TitleBarStyle.hidden,
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
@@ -28,7 +30,6 @@ void main() async {
   });
 
   final daemon = DaemonService();
-  // Start the daemon; if the exe is not found the error surfaces in ConfigProvider/ScanProvider UI.
   try {
     await daemon.start();
   } catch (_) {}
@@ -57,17 +58,39 @@ class DevCleanerApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF1565C0),
+            seedColor: const Color(0xFF009688),
             brightness: Brightness.light,
+          ).copyWith(
+            surface: const Color(0xFFF4F7F9),
+            surfaceContainer: const Color(0xFFECF0F4),
+            surfaceContainerHighest: const Color(0xFFDDE4EC),
           ),
           useMaterial3: true,
+          cardTheme: CardTheme(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFFDDE4EC)),
+            ),
+          ),
         ),
         darkTheme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF1565C0),
+            seedColor: const Color(0xFF009688),
             brightness: Brightness.dark,
+          ).copyWith(
+            surface: const Color(0xFF111920),
+            surfaceContainer: const Color(0xFF192030),
+            surfaceContainerHighest: const Color(0xFF223040),
           ),
           useMaterial3: true,
+          cardTheme: CardTheme(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFF2A3A50)),
+            ),
+          ),
         ),
         themeMode: ThemeMode.system,
         home: const AppShell(),
@@ -87,12 +110,14 @@ class _AppShellState extends HomePageNavigatorState<AppShell> {
   int _index = 0;
 
   @override
-  void switchToResults() {
-    setState(() => _index = 1);
-  }
+  void switchToResults() => setState(() => _index = 1);
 
   @override
   Widget build(BuildContext context) {
+    final scan = context.watch<ScanProvider>();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     const destinations = [
       NavigationRailDestination(
         icon: Icon(Icons.home_outlined),
@@ -118,16 +143,45 @@ class _AppShellState extends HomePageNavigatorState<AppShell> {
     ];
 
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          NavigationRail(
-            selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            labelType: NavigationRailLabelType.all,
-            destinations: destinations,
+          const AppTitleBar(),
+          Expanded(
+            child: Stack(
+              children: [
+                Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: _index,
+                      onDestinationSelected: (i) =>
+                          setState(() => _index = i),
+                      labelType: NavigationRailLabelType.all,
+                      destinations: destinations,
+                      backgroundColor: isDark
+                          ? const Color(0xFF0F1923)
+                          : theme.colorScheme.surfaceContainer,
+                      indicatorColor:
+                          theme.colorScheme.primary.withValues(alpha: 0.15),
+                      selectedIconTheme: IconThemeData(
+                        color: theme.colorScheme.primary,
+                      ),
+                      unselectedIconTheme: IconThemeData(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: theme.dividerColor.withValues(alpha: 0.5),
+                    ),
+                    Expanded(child: pages[_index]),
+                  ],
+                ),
+                if (scan.state == ScanState.scanning)
+                  ScanOverlay(scan: scan),
+              ],
+            ),
           ),
-          const VerticalDivider(width: 1, thickness: 1),
-          Expanded(child: pages[_index]),
         ],
       ),
     );

@@ -105,6 +105,15 @@ class ScanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remove a single item from results (e.g. after adding to whitelist).
+  void removeItem(CleanItem item) {
+    for (final group in _groups) {
+      group.items.remove(item);
+    }
+    _groups.removeWhere((g) => g.items.isEmpty);
+    notifyListeners();
+  }
+
   void _onScanProgress(Map<String, dynamic> params) {
     _progress = params['scanner_name'] as String? ?? '';
     _scannersDone = (params['scanners_done'] as num? ?? 0).toInt();

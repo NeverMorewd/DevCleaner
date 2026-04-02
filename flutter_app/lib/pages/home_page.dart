@@ -27,30 +27,39 @@ class HomePage extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        color: isDark
+            ? const Color(0xFF14202E)
+            : theme.colorScheme.surfaceContainer,
         border: Border(
-          bottom: BorderSide(color: theme.dividerColor),
+          bottom: BorderSide(
+              color: theme.dividerColor.withValues(alpha: 0.5)),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            'DevCleaner',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Reclaim your disk space from dev caches and build artifacts',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'DevCleaner',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Reclaim disk space from dev caches and build artifacts',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -67,10 +76,6 @@ class HomePage extends StatelessWidget {
           _buildScannerGrid(context, config),
           const SizedBox(height: 24),
           _buildScanButton(context, scan),
-          if (scan.state == ScanState.scanning) ...[
-            const SizedBox(height: 16),
-            _buildScanProgress(context, scan),
-          ],
           if (scan.state == ScanState.done) ...[
             const SizedBox(height: 16),
             _buildScanComplete(context, scan),
@@ -88,7 +93,7 @@ class HomePage extends StatelessWidget {
     final theme = Theme.of(context);
     final scannerMap = config.scanners;
 
-    final scanners = [
+    const scanners = [
       ('nuget', 'NuGet', Icons.code, '.NET packages'),
       ('cargo', 'Cargo', Icons.memory, 'Rust packages'),
       ('golang', 'Go Modules', Icons.storage, 'Go packages'),
@@ -110,11 +115,31 @@ class HomePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Enabled Scanners',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          children: [
+            Text(
+              'Scanners',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${scannerMap.values.where((v) => v).length}/${scanners.length}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         LayoutBuilder(
@@ -131,71 +156,19 @@ class HomePage extends StatelessWidget {
                 crossAxisCount: crossAxisCount,
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
-                childAspectRatio: 2.4,
+                childAspectRatio: 2.6,
               ),
               itemCount: scanners.length,
               itemBuilder: (context, idx) {
                 final (key, name, icon, subtitle) = scanners[idx];
                 final enabled = scannerMap[key] ?? false;
-                return Card(
-                  elevation: enabled ? 2 : 0,
-                  color: enabled
-                      ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
-                      : theme.colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.3),
-                  child: InkWell(
-                    onTap: () {
-                      config.updateScanner(key, !enabled);
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      child: Row(
-                        children: [
-                          Icon(
-                            icon,
-                            size: 20,
-                            color: enabled
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  name,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: enabled
-                                        ? theme.colorScheme.onPrimaryContainer
-                                        : theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  subtitle,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: enabled,
-                            onChanged: (v) => config.updateScanner(key, v),
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                return _ScannerCard(
+                  key: ValueKey(key),
+                  name: name,
+                  icon: icon,
+                  subtitle: subtitle,
+                  enabled: enabled,
+                  onToggle: (v) => config.updateScanner(key, v),
                 );
               },
             );
@@ -209,85 +182,17 @@ class HomePage extends StatelessWidget {
     final theme = Theme.of(context);
     final isScanning = scan.state == ScanState.scanning;
 
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: isScanning ? null : () => scan.startScan(),
-            icon: isScanning
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: theme.colorScheme.onPrimary,
-                    ),
-                  )
-                : const Icon(Icons.search),
-            label: Text(isScanning ? 'Scanning...' : 'Start Scan'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              textStyle: theme.textTheme.titleMedium,
-            ),
-          ),
+    return FilledButton.icon(
+      onPressed: isScanning ? null : () => scan.startScan(),
+      icon: const Icon(Icons.search, size: 20),
+      label: Text(isScanning ? 'Scanning…' : 'Start Scan'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        textStyle: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
         ),
-        if (isScanning) ...[
-          const SizedBox(width: 12),
-          OutlinedButton.icon(
-            onPressed: () => scan.abortScan(),
-            icon: const Icon(Icons.stop),
-            label: const Text('Abort'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              foregroundColor: theme.colorScheme.error,
-              side: BorderSide(color: theme.colorScheme.error),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildScanProgress(BuildContext context, ScanProvider scan) {
-    final theme = Theme.of(context);
-    final progress = scan.scannersTotal > 0
-        ? scan.scannersDone / scan.scannersTotal
-        : null;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Scanning...',
-                  style: theme.textTheme.titleSmall,
-                ),
-                if (scan.scannersTotal > 0)
-                  Text(
-                    '${scan.scannersDone} / ${scan.scannersTotal}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: progress),
-            if (scan.progress.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                scan.progress,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );
@@ -296,49 +201,42 @@ class HomePage extends StatelessWidget {
   Widget _buildScanComplete(BuildContext context, ScanProvider scan) {
     final theme = Theme.of(context);
 
-    String humanSize(int bytes) {
-      if (bytes < 1024) return '$bytes B';
-      if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-      if (bytes < 1024 * 1024 * 1024) {
-        return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-      }
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-    }
-
     return Card(
-      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Icon(Icons.check_circle_outline,
-                color: theme.colorScheme.primary, size: 32),
-            const SizedBox(width: 16),
+                color: theme.colorScheme.primary, size: 28),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Scan complete!',
+                    'Scan complete',
                     style: theme.textTheme.titleSmall?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    'Found ${scan.totalCount} items '
-                    '(${humanSize(scan.totalSize)}) that can be cleaned.',
-                    style: theme.textTheme.bodySmall,
+                    '${scan.totalCount} items found  •  ${_humanSize(scan.totalSize)} can be freed',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
             ),
             FilledButton.tonal(
-              onPressed: () {
-                // Navigate to results - done via NavigationRail in MainShell
-                // We use a callback via navigating parent - use a notification
-                _navigateToResults(context);
-              },
+              onPressed: () => _navigateToResults(context),
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               child: const Text('View Results'),
             ),
           ],
@@ -360,8 +258,8 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(Icons.error_outline, color: theme.colorScheme.error, size: 32),
-            const SizedBox(width: 16),
+            Icon(Icons.error_outline, color: theme.colorScheme.error, size: 28),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,10 +280,118 @@ class HomePage extends StatelessWidget {
       ),
     );
   }
+
+  String _humanSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+  }
 }
 
-/// Abstract State base class that allows [AppShell] (or any ancestor)
-/// to handle navigation from [HomePage] to the Results tab.
+// ── Scanner card widget ────────────────────────────────────────────────────────
+
+class _ScannerCard extends StatelessWidget {
+  final String name;
+  final IconData icon;
+  final String subtitle;
+  final bool enabled;
+  final ValueChanged<bool> onToggle;
+
+  const _ScannerCard({
+    super.key,
+    required this.name,
+    required this.icon,
+    required this.subtitle,
+    required this.enabled,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final activeBg = isDark
+        ? theme.colorScheme.primary.withValues(alpha: 0.18)
+        : theme.colorScheme.primaryContainer.withValues(alpha: 0.45);
+    final inactiveBg = isDark
+        ? theme.colorScheme.surface
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      decoration: BoxDecoration(
+        color: enabled ? activeBg : inactiveBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: enabled
+              ? theme.colorScheme.primary.withValues(alpha: 0.35)
+              : theme.dividerColor.withValues(alpha: 0.5),
+        ),
+      ),
+      child: InkWell(
+        onTap: () => onToggle(!enabled),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: enabled
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      name,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: enabled
+                            ? theme.colorScheme.onPrimaryContainer
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.7),
+                        fontSize: 10,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: enabled,
+                onChanged: onToggle,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                thumbColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected)
+                        ? theme.colorScheme.primary
+                        : null),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Abstract State base class that allows [AppShell] to navigate to Results.
 abstract class HomePageNavigatorState<T extends StatefulWidget>
     extends State<T> {
   void switchToResults();
