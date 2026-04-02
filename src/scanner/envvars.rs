@@ -138,7 +138,7 @@ fn expand_env_vars(s: &str) -> String {
 /// Returns true if this variable name/value looks like it holds a filesystem path.
 fn is_path_var(name_upper: &str, value: &str) -> bool {
     // Check if it's a known path variable
-    if KNOWN_PATH_VARS.iter().any(|&k| k == name_upper) {
+    if KNOWN_PATH_VARS.contains(&name_upper) {
         return true;
     }
     // Check if the value looks like an absolute path (drive-letter path or UNC)

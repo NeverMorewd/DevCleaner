@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
 use crate::utils::dir_size;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const VSCODE_ROAMING_DIRS: &[&str] = &["Code", "Cursor", "Windsurf", "trae-cn", "lingma"];
 
@@ -64,14 +64,14 @@ pub fn scan(_config: &Config) -> ScanResult {
     result
 }
 
-fn scan_dir_as_cache(path: &PathBuf, description: &str, result: &mut ScanResult) {
+fn scan_dir_as_cache(path: &Path, description: &str, result: &mut ScanResult) {
     if !path.exists() {
         return;
     }
     let size = dir_size(path);
     if size > 0 {
         result.add_item(CleanItem {
-            path: path.clone(),
+            path: path.to_path_buf(),
             size,
             description: description.to_string(),
             scanner: "IDE Caches".to_string(),

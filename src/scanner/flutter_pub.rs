@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
 use crate::utils::{dir_size, old_versions};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn scan(_config: &Config) -> ScanResult {
     let mut result = ScanResult::new("Flutter/Dart Pub");
@@ -99,14 +99,14 @@ fn scan_hosted_packages(hosted_pub_dev: &PathBuf, result: &mut ScanResult) {
     }
 }
 
-fn add_cache_item(path: &PathBuf, description: &str, result: &mut ScanResult) {
+fn add_cache_item(path: &Path, description: &str, result: &mut ScanResult) {
     if !path.exists() {
         return;
     }
     let size = dir_size(path);
     if size > 0 {
         result.add_item(CleanItem {
-            path: path.clone(),
+            path: path.to_path_buf(),
             size,
             description: description.to_string(),
             scanner: "Flutter/Dart Pub".to_string(),

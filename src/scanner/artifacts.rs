@@ -109,84 +109,91 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
         }
 
         // ── Rust ─────────────────────────────────────────────────────────────
-        if config.artifacts.scan_rust_target && name == "target" {
-            if has_file(parent, "Cargo.toml") {
-                add_artifact(&path, "Rust target/", "Rust", result);
-                continue;
-            }
+        if config.artifacts.scan_rust_target && name == "target"
+            && has_file(parent, "Cargo.toml")
+        {
+            add_artifact(&path, "Rust target/", "Rust", result);
+            continue;
         }
 
         // ── Node.js / JS / TS ────────────────────────────────────────────────
-        if config.artifacts.scan_node_modules && name == "node_modules" {
-            if has_file(parent, "package.json") {
-                add_artifact(&path, "node_modules", "Node.js", result);
-                continue;
-            }
+        if config.artifacts.scan_node_modules && name == "node_modules"
+            && has_file(parent, "package.json")
+        {
+            add_artifact(&path, "node_modules", "Node.js", result);
+            continue;
         }
 
         // ── Next.js ──────────────────────────────────────────────────────────
-        if config.artifacts.scan_frontend_dist && name == ".next" {
-            if has_file(parent, "next.config.js") || has_file(parent, "next.config.ts") || has_file(parent, "next.config.mjs") {
-                add_artifact(&path, "Next.js .next/", "Next.js", result);
-                continue;
-            }
+        if config.artifacts.scan_frontend_dist
+            && name == ".next"
+            && (has_file(parent, "next.config.js")
+                || has_file(parent, "next.config.ts")
+                || has_file(parent, "next.config.mjs"))
+        {
+            add_artifact(&path, "Next.js .next/", "Next.js", result);
+            continue;
         }
 
         // ── Nuxt ─────────────────────────────────────────────────────────────
-        if config.artifacts.scan_frontend_dist && name == ".nuxt" {
-            if has_file(parent, "nuxt.config.ts") || has_file(parent, "nuxt.config.js") {
-                add_artifact(&path, "Nuxt .nuxt/", "Nuxt", result);
-                continue;
-            }
+        if config.artifacts.scan_frontend_dist
+            && name == ".nuxt"
+            && (has_file(parent, "nuxt.config.ts") || has_file(parent, "nuxt.config.js"))
+        {
+            add_artifact(&path, "Nuxt .nuxt/", "Nuxt", result);
+            continue;
         }
-        if config.artifacts.scan_frontend_dist && name == ".output" {
-            if has_file(parent, "nuxt.config.ts") || has_file(parent, "nuxt.config.js") {
-                add_artifact(&path, "Nuxt .output/", "Nuxt", result);
-                continue;
-            }
+        if config.artifacts.scan_frontend_dist
+            && name == ".output"
+            && (has_file(parent, "nuxt.config.ts") || has_file(parent, "nuxt.config.js"))
+        {
+            add_artifact(&path, "Nuxt .output/", "Nuxt", result);
+            continue;
         }
 
         // ── SvelteKit ────────────────────────────────────────────────────────
-        if config.artifacts.scan_frontend_dist && name == ".svelte-kit" {
-            if has_file(parent, "svelte.config.js") || has_file(parent, "svelte.config.ts") {
-                add_artifact(&path, "SvelteKit .svelte-kit/", "SvelteKit", result);
-                continue;
-            }
+        if config.artifacts.scan_frontend_dist
+            && name == ".svelte-kit"
+            && (has_file(parent, "svelte.config.js") || has_file(parent, "svelte.config.ts"))
+        {
+            add_artifact(&path, "SvelteKit .svelte-kit/", "SvelteKit", result);
+            continue;
         }
 
         // ── Angular / Vite / generic dist ────────────────────────────────────
-        if config.artifacts.scan_frontend_dist && name == "dist" {
-            // heuristic: has package.json nearby
-            if has_file(parent, "package.json") {
-                add_artifact(&path, "Frontend dist/", "JS/TS", result);
-                continue;
-            }
+        if config.artifacts.scan_frontend_dist
+            && name == "dist"
+            && has_file(parent, "package.json")
+        {
+            add_artifact(&path, "Frontend dist/", "JS/TS", result);
+            continue;
         }
 
         // ── Java / Maven ─────────────────────────────────────────────────────
-        if config.artifacts.scan_java_build && name == "target" {
-            if has_file(parent, "pom.xml") {
-                add_artifact(&path, "Maven target/", "Java/Maven", result);
-                continue;
-            }
+        if config.artifacts.scan_java_build && name == "target"
+            && has_file(parent, "pom.xml")
+        {
+            add_artifact(&path, "Maven target/", "Java/Maven", result);
+            continue;
         }
 
         // ── Java / Gradle ────────────────────────────────────────────────────
-        if config.artifacts.scan_java_build && name == "build" {
-            if has_file(parent, "build.gradle")
+        if config.artifacts.scan_java_build
+            && name == "build"
+            && (has_file(parent, "build.gradle")
                 || has_file(parent, "build.gradle.kts")
                 || has_file(parent, "settings.gradle")
-                || has_file(parent, "settings.gradle.kts")
-            {
-                add_artifact(&path, "Gradle build/", "Java/Gradle", result);
-                continue;
-            }
+                || has_file(parent, "settings.gradle.kts"))
+        {
+            add_artifact(&path, "Gradle build/", "Java/Gradle", result);
+            continue;
         }
-        if config.artifacts.scan_java_build && name == ".gradle" {
-            if has_file(parent, "build.gradle") || has_file(parent, "build.gradle.kts") {
-                add_artifact(&path, "Gradle .gradle/", "Java/Gradle", result);
-                continue;
-            }
+        if config.artifacts.scan_java_build
+            && name == ".gradle"
+            && (has_file(parent, "build.gradle") || has_file(parent, "build.gradle.kts"))
+        {
+            add_artifact(&path, "Gradle .gradle/", "Java/Gradle", result);
+            continue;
         }
 
         // ── Python ───────────────────────────────────────────────────────────
@@ -206,15 +213,14 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
             add_artifact(&path, "ruff cache", "Python", result);
             continue;
         }
-        if config.artifacts.scan_python_cache && (name == "dist" || name == "build") {
-            // Python project: has setup.py or pyproject.toml
-            if has_file(parent, "setup.py")
+        if config.artifacts.scan_python_cache
+            && (name == "dist" || name == "build")
+            && (has_file(parent, "setup.py")
                 || has_file(parent, "pyproject.toml")
-                || has_file(parent, "setup.cfg")
-            {
-                add_artifact(&path, &format!("Python build artifact ({})", name), "Python", result);
-                continue;
-            }
+                || has_file(parent, "setup.cfg"))
+        {
+            add_artifact(&path, &format!("Python build artifact ({})", name), "Python", result);
+            continue;
         }
         if config.artifacts.scan_python_cache && name.ends_with(".egg-info") {
             // treated as a dir — skip below
@@ -230,48 +236,47 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 || name.starts_with("cmake-build-")
                 || name == "out"
                 || name == "_build")
-        {
-            // Require CMakeLists.txt or Makefile nearby
-            if has_file(parent, "CMakeLists.txt")
+            && (has_file(parent, "CMakeLists.txt")
                 || has_file(parent, "Makefile")
-                || has_file(parent, "meson.build")
-            {
-                add_artifact(&path, &format!("C/C++ build dir ({})", name), "C/C++", result);
-                continue;
-            }
+                || has_file(parent, "meson.build"))
+        {
+            add_artifact(&path, &format!("C/C++ build dir ({})", name), "C/C++", result);
+            continue;
         }
 
         // ── Flutter / Dart ───────────────────────────────────────────────────
-        if config.artifacts.scan_flutter_build && name == "build" {
-            if has_file(parent, "pubspec.yaml") {
-                add_artifact(&path, "Flutter/Dart build/", "Flutter/Dart", result);
-                continue;
-            }
+        if config.artifacts.scan_flutter_build
+            && name == "build"
+            && has_file(parent, "pubspec.yaml")
+        {
+            add_artifact(&path, "Flutter/Dart build/", "Flutter/Dart", result);
+            continue;
         }
-        if config.artifacts.scan_flutter_build && name == ".dart_tool" {
-            if has_file(parent, "pubspec.yaml") {
-                add_artifact(&path, "Dart tool cache .dart_tool/", "Flutter/Dart", result);
-                continue;
-            }
+        if config.artifacts.scan_flutter_build
+            && name == ".dart_tool"
+            && has_file(parent, "pubspec.yaml")
+        {
+            add_artifact(&path, "Dart tool cache .dart_tool/", "Flutter/Dart", result);
+            continue;
         }
 
         // ── Android ──────────────────────────────────────────────────────────
-        if config.artifacts.scan_java_build && name == "build" {
-            if has_file(parent, "AndroidManifest.xml")
+        if config.artifacts.scan_java_build
+            && name == "build"
+            && (has_file(parent, "AndroidManifest.xml")
                 || has_file(parent, "build.gradle")
-                || has_file(parent, "build.gradle.kts")
-            {
-                add_artifact(&path, "Android build/", "Android", result);
-                continue;
-            }
+                || has_file(parent, "build.gradle.kts"))
+        {
+            add_artifact(&path, "Android build/", "Android", result);
+            continue;
         }
 
         // ── Go vendor ────────────────────────────────────────────────────────
-        if config.artifacts.scan_go_vendor && name == "vendor" {
-            if has_file(parent, "go.mod") {
-                add_artifact(&path, "Go vendor/", "Go", result);
-                continue;
-            }
+        if config.artifacts.scan_go_vendor && name == "vendor"
+            && has_file(parent, "go.mod")
+        {
+            add_artifact(&path, "Go vendor/", "Go", result);
+            continue;
         }
 
         // ── Skip dirs we should never recurse into ───────────────────────────
