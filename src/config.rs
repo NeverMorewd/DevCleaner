@@ -22,6 +22,11 @@ pub struct FilterConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralConfig {
     pub confirm_before_delete: bool,
+    /// Set to true after the first-run smart-default detection has been applied.
+    /// Old config files written before this field existed will deserialize it as
+    /// false (thanks to `#[serde(default)]`), triggering a one-time re-detection.
+    #[serde(default)]
+    pub smart_defaults_applied: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -67,6 +72,7 @@ impl Default for Config {
         Config {
             general: GeneralConfig {
                 confirm_before_delete: true,
+                smart_defaults_applied: true,
             },
             scanners: ScannersConfig {
                 nuget: true,
@@ -119,6 +125,7 @@ impl Config {
         Config {
             general: GeneralConfig {
                 confirm_before_delete: true,
+                smart_defaults_applied: true,
             },
             scanners: ScannersConfig {
                 nuget: env.dotnet,
@@ -165,7 +172,19 @@ impl Config {
             return Ok(Self::smart_default());
         }
         let content = std::fs::read_to_string(&path)?;
-        let config: Config = toml::from_str(&content)?;
+        let mut config: Config = toml::from_str(&content)?;
+
+        // Migration: config files written before smart-defaults existed (or ones
+        // where all scanners ended up false due to earlier bugs) get a one-time
+        // re-detection pass.  The flag is then saved so this only runs once.
+        if !config.general.smart_defaults_applied {
+            let smart = Self::smart_default();
+            config.scanners = smart.scanners;
+            config.artifacts = smart.artifacts;
+            config.general.smart_defaults_applied = true;
+            let _ = config.save(); // best-effort; ignore I/O errors here
+        }
+
         Ok(config)
     }
 
