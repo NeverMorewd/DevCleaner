@@ -17,24 +17,157 @@ typedef _Def = ({
   Color color
 });
 
-// Simple scanners in compact 2-col grid (no expandable children).
-// nuget, build_artifacts, env_vars, windows_temp are handled as expandable rows.
-const List<_Def> _kSimpleScanners = [
-  (key: 'cargo',         name: 'Cargo',         sub: 'Rust',           icon: Icons.memory,                   color: Color(0xFFCE422B)),
-  (key: 'rustup',        name: 'Rustup',        sub: 'Old toolchains', icon: Icons.system_update_alt,        color: Color(0xFFBF360C)),
-  (key: 'golang',        name: 'Go Modules',    sub: 'Go',             icon: Icons.cloud_queue,              color: Color(0xFF00ADD8)),
-  (key: 'node',          name: 'Node.js',       sub: 'npm / yarn',     icon: Icons.hub,                      color: Color(0xFF339933)),
-  (key: 'pip',           name: 'pip / uv',      sub: 'Python',         icon: Icons.code,                     color: Color(0xFF3776AB)),
-  (key: 'maven',         name: 'Maven',         sub: 'Java',           icon: Icons.inventory_2_outlined,     color: Color(0xFFC71A36)),
-  (key: 'gradle',        name: 'Gradle',        sub: 'Java / Android', icon: Icons.construction,             color: Color(0xFF1BA9AC)),
-  (key: 'cpp_vcpkg',     name: 'vcpkg',         sub: 'C++',            icon: Icons.build_circle_outlined,    color: Color(0xFF6E4C13)),
-  (key: 'cpp_conan',     name: 'Conan',         sub: 'C++',            icon: Icons.settings_input_component, color: Color(0xFF1F9FD5)),
-  (key: 'android_sdk',   name: 'Android SDK',   sub: 'Old SDKs',       icon: Icons.android,                  color: Color(0xFF3DDC84)),
-  (key: 'ide_cache',     name: 'IDE Caches',    sub: 'JetBrains / VS', icon: Icons.developer_mode,           color: Color(0xFFE91E8C)),
-  (key: 'browser_cache', name: 'Browser Cache', sub: 'Chrome / Edge',  icon: Icons.public,                   color: Color(0xFF1A73E8)),
-  (key: 'dump_files',    name: 'Dump Files',    sub: 'Crash logs',     icon: Icons.warning_amber_rounded,    color: Color(0xFF6D4C41)),
-  (key: 'flutter_pub',   name: 'Flutter / Dart',sub: 'Pub cache',      icon: Icons.flutter_dash,             color: Color(0xFF02569B)),
+// ── Data model for language groups ────────────────────────────────────────────
+
+typedef _GroupChild = ({
+  String key,
+  String label,
+  String description,
+  String kind, // 'scanner' or 'artifact'
+});
+
+typedef _Group = ({
+  String name,
+  String sub,
+  IconData icon,
+  Color color,
+  List<_GroupChild> children,
+});
+
+final List<_Group> _kGroups = [
+  (
+    name: 'C# / .NET',
+    sub: 'NuGet + Build Artifacts',
+    icon: Icons.widgets_outlined,
+    color: const Color(0xFF512BD4),
+    children: [
+      (key: 'nuget',              label: 'NuGet',                   description: '.NET package cache',           kind: 'scanner'),
+      (key: 'scan_csharp_obj_bin',label: 'Build Artifacts (obj/ bin/)', description: 'C# build output',         kind: 'artifact'),
+    ],
+  ),
+  (
+    name: 'Rust',
+    sub: 'Cargo + Rustup + target/',
+    icon: Icons.memory,
+    color: const Color(0xFFCE422B),
+    children: [
+      (key: 'cargo',          label: 'Cargo',                  description: 'Registry & git cache',  kind: 'scanner'),
+      (key: 'rustup',         label: 'Rustup',                 description: 'Old toolchains',        kind: 'scanner'),
+      (key: 'scan_rust_target',label: 'Build Artifacts (target/)', description: 'Rust build output', kind: 'artifact'),
+    ],
+  ),
+  (
+    name: 'Go',
+    sub: 'Modules + Vendor',
+    icon: Icons.cloud_queue,
+    color: const Color(0xFF00ADD8),
+    children: [
+      (key: 'golang',        label: 'Go Modules',         description: 'Module cache',           kind: 'scanner'),
+      (key: 'scan_go_vendor',label: 'Go Vendor (vendor/)',description: 'Vendored dependencies',  kind: 'artifact'),
+    ],
+  ),
+  (
+    name: 'Node.js / JS',
+    sub: 'npm / yarn / pnpm + node_modules',
+    icon: Icons.hub,
+    color: const Color(0xFF339933),
+    children: [
+      (key: 'node',               label: 'Node.js',       description: 'npm / yarn / pnpm cache', kind: 'scanner'),
+      (key: 'scan_node_modules',  label: 'node_modules/', description: 'Local package installs',  kind: 'artifact'),
+      (key: 'scan_frontend_dist', label: 'JS/TS dist',    description: '.next/ .nuxt/ dist/',     kind: 'artifact'),
+    ],
+  ),
+  (
+    name: 'Python',
+    sub: 'pip / uv + __pycache__',
+    icon: Icons.code,
+    color: const Color(0xFF3776AB),
+    children: [
+      (key: 'pip',               label: 'pip / uv',     description: 'Python package cache',           kind: 'scanner'),
+      (key: 'scan_python_cache', label: 'Python Cache', description: '__pycache__/ .pytest_cache/',    kind: 'artifact'),
+    ],
+  ),
+  (
+    name: 'Java',
+    sub: 'Maven + Gradle',
+    icon: Icons.inventory_2_outlined,
+    color: const Color(0xFFC71A36),
+    children: [
+      (key: 'maven',          label: 'Maven',           description: 'Local Maven repo (~/.m2)',       kind: 'scanner'),
+      (key: 'gradle',         label: 'Gradle',          description: 'Gradle caches',                 kind: 'scanner'),
+      (key: 'scan_java_build',label: 'Build Artifacts', description: 'Maven target/ Gradle build/',   kind: 'artifact'),
+    ],
+  ),
+  (
+    name: 'C++',
+    sub: 'vcpkg + Conan + CMake',
+    icon: Icons.build_circle_outlined,
+    color: const Color(0xFF6E4C13),
+    children: [
+      (key: 'cpp_vcpkg',       label: 'vcpkg',          description: 'vcpkg package cache',           kind: 'scanner'),
+      (key: 'cpp_conan',       label: 'Conan',          description: 'Conan package cache',           kind: 'scanner'),
+      (key: 'scan_cmake_build',label: 'Build Artifacts',description: 'CMakeFiles/ cmake-build-*/',    kind: 'artifact'),
+    ],
+  ),
+  (
+    name: 'Flutter / Dart',
+    sub: 'Pub cache + build/',
+    icon: Icons.flutter_dash,
+    color: const Color(0xFF02569B),
+    children: [
+      (key: 'flutter_pub',       label: 'Flutter/Dart Pub', description: 'Pub package cache',         kind: 'scanner'),
+      (key: 'scan_flutter_build',label: 'Build Artifacts',  description: 'build/ .dart_tool/',        kind: 'artifact'),
+    ],
+  ),
 ];
+
+// Standalone simple rows — 2-col grid, Switch only (no children).
+const List<_Def> _kStandaloneItems = [
+  (key: 'android_sdk',   name: 'Android SDK',   sub: 'Old SDK components',         icon: Icons.android,              color: Color(0xFF3DDC84)),
+  (key: 'ide_cache',     name: 'IDE Caches',    sub: 'JetBrains / VS Code',        icon: Icons.developer_mode,       color: Color(0xFFE91E8C)),
+  (key: 'browser_cache', name: 'Browser Cache', sub: 'Chrome / Edge / Firefox',    icon: Icons.public,               color: Color(0xFF1A73E8)),
+  (key: 'dump_files',    name: 'Dump Files',    sub: 'Crash logs & WER reports',   icon: Icons.warning_amber_rounded, color: Color(0xFF6D4C41)),
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+bool _groupAnyEnabled(ConfigProvider config, _Group group) {
+  for (final child in group.children) {
+    final enabled = child.kind == 'scanner'
+        ? (config.scanners[child.key] ?? false)
+        : (config.artifacts[child.key] ?? false);
+    if (enabled) return true;
+  }
+  return false;
+}
+
+void _toggleGroupAll(ConfigProvider config, _Group group, bool v) {
+  bool hasArtifact = false;
+  for (final child in group.children) {
+    if (child.kind == 'scanner') {
+      config.updateScanner(child.key, v);
+    } else {
+      config.updateArtifact(child.key, v);
+      if (v) hasArtifact = true;
+    }
+  }
+  if (v && hasArtifact && !(config.scanners['build_artifacts'] ?? false)) {
+    config.updateScanner('build_artifacts', true);
+  }
+}
+
+void _toggleChild(ConfigProvider config, _GroupChild child, bool v) {
+  if (child.kind == 'scanner') {
+    config.updateScanner(child.key, v);
+  } else {
+    config.updateArtifact(child.key, v);
+    if (v && !(config.scanners['build_artifacts'] ?? false)) {
+      config.updateScanner('build_artifacts', true);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
@@ -79,7 +212,14 @@ class _ScanPageState extends State<ScanPage> {
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeInOut,
               child: _scannersExpanded
-                  ? _buildScannerPanel(context, config)
+                  ? ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.52,
+                      ),
+                      child: SingleChildScrollView(
+                        child: _buildScannerPanel(context, config),
+                      ),
+                    )
                   : const SizedBox.shrink(),
             ),
             if (hasContent) ...[
@@ -175,16 +315,11 @@ class _ScanPageState extends State<ScanPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildCsharpGroup(context, config),
-          _buildSimpleGrid(context, config),
-          _buildExpandableScanner(
-            context: context, config: config,
-            scannerKey: 'build_artifacts',
-            name: 'Build Artifacts', sub: 'obj/ bin/ target/ etc.',
-            icon: Icons.folder_delete_outlined, color: const Color(0xFF607D8B),
-            expandKey: '_build_artifacts',
-            children: _buildArtifactChildren(context, config),
-          ),
+          // Language groups
+          for (final group in _kGroups) _buildLanguageGroup(context, config, group),
+          // Standalone simple 2-col grid
+          _buildStandaloneGrid(context, config),
+          // Expandable: Env Vars
           _buildExpandableScanner(
             context: context, config: config,
             scannerKey: 'env_vars',
@@ -193,6 +328,7 @@ class _ScanPageState extends State<ScanPage> {
             expandKey: '_env_vars',
             children: _buildEnvVarsChildren(context, config),
           ),
+          // Expandable: Windows Temp
           _buildExpandableScanner(
             context: context, config: config,
             scannerKey: 'windows_temp',
@@ -208,16 +344,14 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 
-  // ── C# / .NET group ───────────────────────────────────────────────────────
+  // ── Language group row ────────────────────────────────────────────────────
 
-  Widget _buildCsharpGroup(BuildContext context, ConfigProvider config) {
+  Widget _buildLanguageGroup(BuildContext context, ConfigProvider config, _Group group) {
     final theme      = Theme.of(context);
     final isDark     = theme.brightness == Brightness.dark;
-    const color      = Color(0xFF512BD4);
-    const expKey     = '_csharp';
-    final nugetOn    = config.scanners['nuget'] ?? false;
-    final artifactOn = config.artifacts['scan_csharp_obj_bin'] ?? false;
-    final anyOn      = nugetOn || artifactOn;
+    final color      = group.color;
+    final expKey     = '_grp_${group.name}';
+    final anyOn      = _groupAnyEnabled(config, group);
     final isExpanded = _expanded.contains(expKey);
 
     return Column(children: [
@@ -236,7 +370,7 @@ class _ScanPageState extends State<ScanPage> {
                 color: anyOn ? color : color.withValues(alpha: 0.22),
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: Icon(Icons.widgets_outlined, size: 14,
+              child: Icon(group.icon, size: 14,
                   color: anyOn ? Colors.white : Colors.white.withValues(alpha: 0.55)),
             ),
             const SizedBox(width: 8),
@@ -244,51 +378,73 @@ class _ScanPageState extends State<ScanPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('C# / .NET', style: theme.textTheme.bodySmall?.copyWith(
+                Text(group.name, style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600, fontSize: 12,
                   color: anyOn
                       ? theme.colorScheme.onSurface
                       : theme.colorScheme.onSurface.withValues(alpha: 0.40),
                 )),
-                Text('NuGet + Build Artifacts', style: theme.textTheme.labelSmall?.copyWith(
+                Text(group.sub, style: theme.textTheme.labelSmall?.copyWith(
                   fontSize: 10,
                   color: theme.colorScheme.onSurfaceVariant
                       .withValues(alpha: anyOn ? 0.7 : 0.35),
                 )),
               ],
             )),
+            // Switch wrapped in GestureDetector to absorb tap (prevent row expand/collapse)
+            GestureDetector(
+              onTap: () {
+                _toggleGroupAll(config, group, !anyOn);
+                _scheduleConfigSave(config);
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Switch(
+                  value: anyOn,
+                  onChanged: (v) {
+                    _toggleGroupAll(config, group, v);
+                    _scheduleConfigSave(config);
+                  },
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ),
             Icon(isExpanded ? Icons.expand_less : Icons.expand_more,
                 size: 16,
                 color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
           ]),
         ),
       ),
-      if (isExpanded) ...[
-        _SubToggle(
-          label: 'NuGet', description: '.NET package cache',
-          value: nugetOn, indent: 44,
-          onChanged: (v) { config.updateScanner('nuget', v); _scheduleConfigSave(config); },
-        ),
-        _SubToggle(
-          label: 'Build Artifacts  (obj/ bin/)',
-          description: 'Requires Build Artifacts scanner to be enabled',
-          value: artifactOn, indent: 44,
-          onChanged: (v) {
-            config.updateArtifact('scan_csharp_obj_bin', v);
-            if (v && !(config.scanners['build_artifacts'] ?? false)) {
-              config.updateScanner('build_artifacts', true);
-            }
-            _scheduleConfigSave(config);
-          },
-        ),
-      ],
+      AnimatedSize(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        child: isExpanded
+            ? _SubGrid(
+                children: group.children.map((child) {
+                  final value = child.kind == 'scanner'
+                      ? (config.scanners[child.key] ?? false)
+                      : (config.artifacts[child.key] ?? false);
+                  return _SubCheckbox(
+                    label: child.label,
+                    description: child.description,
+                    value: value,
+                    onChanged: (v) {
+                      _toggleChild(config, child, v);
+                      _scheduleConfigSave(config);
+                    },
+                  );
+                }).toList(),
+              )
+            : const SizedBox.shrink(),
+      ),
       Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.25)),
     ]);
   }
 
-  // ── Simple 2-col grid ─────────────────────────────────────────────────────
+  // ── Standalone 2-col grid ─────────────────────────────────────────────────
 
-  Widget _buildSimpleGrid(BuildContext context, ConfigProvider config) {
+  Widget _buildStandaloneGrid(BuildContext context, ConfigProvider config) {
     return LayoutBuilder(builder: (ctx, constraints) {
       final cols = constraints.maxWidth > 960 ? 4 : constraints.maxWidth > 640 ? 3 : 2;
       return GridView.builder(
@@ -298,9 +454,9 @@ class _ScanPageState extends State<ScanPage> {
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: cols, mainAxisExtent: 44, mainAxisSpacing: 1, crossAxisSpacing: 1,
         ),
-        itemCount: _kSimpleScanners.length,
+        itemCount: _kStandaloneItems.length,
         itemBuilder: (_, i) {
-          final s       = _kSimpleScanners[i];
+          final s       = _kStandaloneItems[i];
           final enabled = config.scanners[s.key] ?? false;
           return _ScannerRow(
             def: s, enabled: enabled,
@@ -311,7 +467,7 @@ class _ScanPageState extends State<ScanPage> {
     });
   }
 
-  // ── Generic expandable scanner row ────────────────────────────────────────
+  // ── Generic expandable scanner row (for env_vars, windows_temp) ───────────
 
   Widget _buildExpandableScanner({
     required BuildContext context,
@@ -385,34 +541,14 @@ class _ScanPageState extends State<ScanPage> {
           ]),
         ),
       ),
-      if (isExpanded) ...children,
+      AnimatedSize(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        child: isExpanded
+            ? Column(children: children)
+            : const SizedBox.shrink(),
+      ),
     ]);
-  }
-
-  // ── Artifact sub-items ────────────────────────────────────────────────────
-
-  List<Widget> _buildArtifactChildren(BuildContext context, ConfigProvider config) {
-    const items = [
-      ('scan_csharp_obj_bin', 'C# / .NET',  'obj/ bin/'),
-      ('scan_rust_target',    'Rust',        'target/'),
-      ('scan_node_modules',   'Node.js',     'node_modules/'),
-      ('scan_frontend_dist',  'JS / TS',     '.next/ .nuxt/ dist/'),
-      ('scan_java_build',     'Java',        'Maven target/ Gradle build/'),
-      ('scan_python_cache',   'Python',      '__pycache__/ .pytest_cache/'),
-      ('scan_cmake_build',    'C / C++',     'CMakeFiles/ cmake-build-*/'),
-      ('scan_flutter_build',  'Flutter',     'build/ .dart_tool/'),
-      ('scan_go_vendor',      'Go',          'vendor/'),
-    ];
-    return [
-      _SubGrid(children: items.map((item) {
-        final (key, label, desc) = item;
-        final value = config.artifacts[key] ?? false;
-        return _SubCheckbox(
-          label: label, description: desc, value: value,
-          onChanged: (v) { config.updateArtifact(key, v); _scheduleConfigSave(config); },
-        );
-      }).toList()),
-    ];
   }
 
   // ── Env Vars sub-items ────────────────────────────────────────────────────
@@ -420,16 +556,16 @@ class _ScanPageState extends State<ScanPage> {
   List<Widget> _buildEnvVarsChildren(BuildContext context, ConfigProvider config) {
     final opts = config.envVarsOptions;
     return [
-      _SubToggle(
+      _SubCheckbox(
         label: 'Invalid variable values',
         description: 'JAVA_HOME, GOROOT, etc. pointing to non-existent paths',
-        value: opts['check_invalid_values'] ?? true, indent: 44,
+        value: opts['check_invalid_values'] ?? true,
         onChanged: (v) { config.updateEnvVarsOption('check_invalid_values', v); _scheduleConfigSave(config); },
       ),
-      _SubToggle(
+      _SubCheckbox(
         label: 'Invalid PATH entries',
         description: "PATH entries that don't exist on disk",
-        value: opts['check_path_entries'] ?? true, indent: 44,
+        value: opts['check_path_entries'] ?? true,
         onChanged: (v) { config.updateEnvVarsOption('check_path_entries', v); _scheduleConfigSave(config); },
       ),
     ];
@@ -1442,54 +1578,6 @@ class _ScannerRow extends StatelessWidget {
           )),
           Switch(
             value: enabled, onChanged: onToggle,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-class _SubToggle extends StatelessWidget {
-  final String label;
-  final String description;
-  final bool value;
-  final double indent;
-  final ValueChanged<bool> onChanged;
-
-  const _SubToggle({
-    required this.label,
-    required this.description,
-    required this.value,
-    required this.onChanged,
-    this.indent = 44,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: () => onChanged(!value),
-      child: Padding(
-        padding: EdgeInsets.only(left: indent, right: 12, top: 6, bottom: 6),
-        child: Row(children: [
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: value
-                    ? theme.colorScheme.onSurface
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.45),
-              )),
-              Text(description, style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 10,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-              ), overflow: TextOverflow.ellipsis),
-            ],
-          )),
-          Switch(
-            value: value, onChanged: onChanged,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ]),
