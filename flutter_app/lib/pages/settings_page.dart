@@ -72,8 +72,6 @@ class _SettingsPageState extends State<SettingsPage> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
           children: [
-            _buildScannersSection(context, config),
-            const SizedBox(height: 12),
             _buildArtifactsSection(context, config),
             const SizedBox(height: 12),
             _buildProjectRootsSection(context, config),
@@ -110,52 +108,6 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 8),
         child,
       ],
-    );
-  }
-
-  // ── Scanners ──────────────────────────────────────────────────────────────
-
-  Widget _buildScannersSection(BuildContext context, ConfigProvider config) {
-    const scanners = [
-      ('nuget',          'NuGet',              '.NET package cache'),
-      ('cargo',          'Cargo',              'Rust registry & git'),
-      ('golang',         'Go Modules',         'Go module cache'),
-      ('node',           'Node.js',            'npm / yarn / pnpm'),
-      ('pip',            'pip / uv',           'Python caches'),
-      ('maven',          'Maven',              'Local Maven repo'),
-      ('gradle',         'Gradle',             'Gradle caches'),
-      ('cpp_vcpkg',      'vcpkg',              'C++ vcpkg cache'),
-      ('cpp_conan',      'Conan',              'C++ Conan cache'),
-      ('build_artifacts','Build Artifacts',    'obj/ bin/ target/'),
-      ('env_vars',       'Env Vars',           'Invalid PATH entries'),
-      ('dump_files',     'Dump Files',         '.dmp & WER reports'),
-      ('android_sdk',    'Android SDK',        'Old SDK components'),
-      ('ide_cache',      'IDE Caches',         'VS Code / JetBrains'),
-      ('windows_temp',   'Windows Temp',       'TEMP / Prefetch'),
-      ('rustup',         'Rustup',             'Old toolchains'),
-      ('browser_cache',  'Browser Cache',      'Chrome / Edge / Firefox'),
-      ('flutter_pub',    'Flutter / Dart Pub', 'Pub package cache'),
-    ];
-
-    return _section(
-      context,
-      title: 'Enabled Scanners',
-      subtitle: 'Toggle which scanners run during a scan.',
-      child: _twoColGrid(
-        children: scanners.map((s) {
-          final (key, label, desc) = s;
-          final enabled = config.scanners[key] ?? false;
-          return _CompactSwitch(
-            label: label,
-            description: desc,
-            value: enabled,
-            onChanged: (v) {
-              config.updateScanner(key, v);
-              _scheduleSave(config);
-            },
-          );
-        }).toList(),
-      ),
     );
   }
 
@@ -327,69 +279,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: Theme.of(context).colorScheme.outline,
                 fontStyle: FontStyle.italic,
               )),
-    );
-  }
-}
-
-// ── Compact toggle row ────────────────────────────────────────────────────────
-
-class _CompactSwitch extends StatelessWidget {
-  final String label;
-  final String description;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _CompactSwitch({
-    required this.label,
-    required this.description,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(4),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-        child: Row(
-          children: [
-            Transform.scale(
-              scale: 0.75,
-              alignment: Alignment.centerLeft,
-              child: Switch(
-                value: value,
-                onChanged: onChanged,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: value
-                            ? theme.colorScheme.onSurface
-                            : theme.colorScheme.onSurface
-                                .withValues(alpha: 0.45),
-                      )),
-                  Text(description,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurfaceVariant
-                            .withValues(alpha: 0.6),
-                      ),
-                      overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
