@@ -133,6 +133,44 @@ class ConfigProvider extends ChangeNotifier {
     });
   }
 
+  Map<String, bool> get envVarsOptions {
+    final o = _config['env_vars_options'] as Map? ?? {};
+    return {
+      'check_invalid_values': o['check_invalid_values'] as bool? ?? true,
+      'check_path_entries': o['check_path_entries'] as bool? ?? true,
+    };
+  }
+
+  void updateEnvVarsOption(String key, bool value) {
+    final opts =
+        Map<String, dynamic>.from(_config['env_vars_options'] as Map? ?? {});
+    opts[key] = value;
+    _config =
+        Map<String, dynamic>.from(_config)..['env_vars_options'] = opts;
+    notifyListeners();
+  }
+
+  Map<String, bool> get windowsTempOptions {
+    final o = _config['windows_temp_options'] as Map? ?? {};
+    return {
+      'user_temp':   o['user_temp']   as bool? ?? true,
+      'system_temp': o['system_temp'] as bool? ?? true,
+      'prefetch':    o['prefetch']    as bool? ?? true,
+      'wu_download': o['wu_download'] as bool? ?? true,
+      'inet_cache':  o['inet_cache']  as bool? ?? true,
+      'wer':         o['wer']         as bool? ?? true,
+    };
+  }
+
+  void updateWindowsTempOption(String key, bool value) {
+    final opts = Map<String, dynamic>.from(
+        _config['windows_temp_options'] as Map? ?? {});
+    opts[key] = value;
+    _config =
+        Map<String, dynamic>.from(_config)..['windows_temp_options'] = opts;
+    notifyListeners();
+  }
+
   Future<void> saveToFile() async {
     await save(_config);
   }

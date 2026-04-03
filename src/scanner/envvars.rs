@@ -37,28 +37,30 @@ const KNOWN_PATH_VARS: &[&str] = &[
     "VULKAN_SDK",
 ];
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(config: &Config) -> ScanResult {
     #[cfg(windows)]
     {
-        scan_windows()
+        scan_windows(config)
     }
     #[cfg(not(windows))]
     {
+        let _ = config;
         ScanResult::new(SCANNER_NAME)
     }
 }
 
 #[cfg(windows)]
-fn scan_windows() -> ScanResult {
+fn scan_windows(config: &Config) -> ScanResult {
     use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ};
     use winreg::RegKey;
 
+    let opts = &config.env_vars_options;
     let mut result = ScanResult::new(SCANNER_NAME);
 
     // --- User environment variables ---
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     match hkcu.open_subkey_with_flags("Environment", KEY_READ) {
-        Ok(key) => scan_reg_key(&key, RegScope::User, &mut result),
+        Ok(key) => scan_reg_key(&key, RegScope::User, &mut result, opts),
         Err(e) => {
             result.error = Some(format!("Cannot read HKCU\\Environment: {}", e));
         }
@@ -68,7 +70,7 @@ fn scan_windows() -> ScanResult {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let sys_path = r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment";
     match hklm.open_subkey_with_flags(sys_path, KEY_READ) {
-        Ok(key) => scan_reg_key(&key, RegScope::System, &mut result),
+        Ok(key) => scan_reg_key(&key, RegScope::System, &mut result, opts),
         Err(e) => {
             // System env may require elevation; treat as non-fatal warning.
             let existing_err = result.error.take();
@@ -84,7 +86,12 @@ fn scan_windows() -> ScanResult {
 }
 
 #[cfg(windows)]
-fn scan_reg_key(key: &winreg::RegKey, scope: RegScope, result: &mut ScanResult) {
+fn scan_reg_key(
+    key: &winreg::RegKey,
+    scope: RegScope,
+    result: &mut ScanResult,
+    opts: &crate::config::EnvVarsOptions,
+) {
     use winreg::enums::RegType;
 
     let scope_str = match scope {
@@ -108,8 +115,10 @@ fn scan_reg_key(key: &winreg::RegKey, scope: RegScope, result: &mut ScanResult) 
         let name_upper = name.to_uppercase();
 
         if name_upper == "PATH" {
-            check_path_var(&name, &expanded, scope.clone(), scope_str, result);
-        } else if is_path_var(&name_upper, &expanded) {
+            if opts.check_path_entries {
+                check_path_var(&name, &expanded, scope.clone(), scope_str, result);
+            }
+        } else if is_path_var(&name_upper, &expanded) && opts.check_invalid_values {
             check_single_path_var(&name, &expanded, scope.clone(), scope_str, result);
         }
     }
@@ -156,9 +165,6 @@ fn looks_like_path(value: &str) -> bool {
 }
 
 /// Paths that must never be reported as invalid, even if they appear inaccessible.
-/// These are Windows system virtual directories used by the App Execution Alias and
-/// WinGet mechanisms; `Path::exists()` can return false for them depending on the
-/// caller's security context, but they are legitimate PATH entries.
 #[cfg(windows)]
 const PROTECTED_PATH_PREFIXES: &[&str] = &[
     r"Microsoft\WindowsApps",
@@ -190,7 +196,7 @@ fn check_path_var(
         }
         #[cfg(windows)]
         if is_protected_path(entry) {
-            continue; // never flag critical Windows system paths
+            continue;
         }
         if !std::path::Path::new(entry).exists() {
             result.add_item(CleanItem {

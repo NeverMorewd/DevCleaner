@@ -10,6 +10,10 @@ pub struct Config {
     pub artifacts: ArtifactsConfig,
     #[serde(default)]
     pub filter: FilterConfig,
+    #[serde(default)]
+    pub env_vars_options: EnvVarsOptions,
+    #[serde(default)]
+    pub windows_temp_options: WindowsTempOptions,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -17,6 +21,66 @@ pub struct FilterConfig {
     /// Regex patterns matched against full path string. Matching items are excluded from results.
     #[serde(default)]
     pub whitelist_patterns: Vec<String>,
+}
+
+fn bool_true() -> bool {
+    true
+}
+
+/// Sub-options for the env_vars scanner.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EnvVarsOptions {
+    /// Check env vars (JAVA_HOME, GOROOT, etc.) whose value points to a non-existent path.
+    #[serde(default = "bool_true")]
+    pub check_invalid_values: bool,
+    /// Check PATH entries that don't exist on disk.
+    #[serde(default = "bool_true")]
+    pub check_path_entries: bool,
+}
+
+impl Default for EnvVarsOptions {
+    fn default() -> Self {
+        Self {
+            check_invalid_values: true,
+            check_path_entries: true,
+        }
+    }
+}
+
+/// Sub-options for the windows_temp scanner.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WindowsTempOptions {
+    /// Scan the user's %TEMP% / %LOCALAPPDATA%\Temp directory.
+    #[serde(default = "bool_true")]
+    pub user_temp: bool,
+    /// Scan C:\Windows\Temp (may need elevation).
+    #[serde(default = "bool_true")]
+    pub system_temp: bool,
+    /// Scan C:\Windows\Prefetch.
+    #[serde(default = "bool_true")]
+    pub prefetch: bool,
+    /// Scan C:\Windows\SoftwareDistribution\Download (Windows Update cache).
+    #[serde(default = "bool_true")]
+    pub wu_download: bool,
+    /// Scan IE/Edge legacy internet cache.
+    #[serde(default = "bool_true")]
+    pub inet_cache: bool,
+    /// Scan Windows Error Reporting archive and queue.
+    #[serde(default = "bool_true")]
+    pub wer: bool,
+}
+
+impl Default for WindowsTempOptions {
+    fn default() -> Self {
+        Self {
+            user_temp: true,
+            system_temp: true,
+            prefetch: true,
+            wu_download: true,
+            inet_cache: true,
+            wer: true,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -107,6 +171,8 @@ impl Default for Config {
                 project_roots: Vec::new(),
             },
             filter: FilterConfig::default(),
+            env_vars_options: EnvVarsOptions::default(),
+            windows_temp_options: WindowsTempOptions::default(),
         }
     }
 }
@@ -160,6 +226,8 @@ impl Config {
                 project_roots: Vec::new(),
             },
             filter: FilterConfig::default(),
+            env_vars_options: EnvVarsOptions::default(),
+            windows_temp_options: WindowsTempOptions::default(),
         }
     }
 
