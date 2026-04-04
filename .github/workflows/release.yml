@@ -66,8 +66,8 @@ jobs:
 
       - name: Verify Flutter output exe exists
         run: |
-          if (!(Test-Path "flutter_app\build\windows\x64\runner\Release\DevCleaner.exe")) {
-            Write-Error "DevCleaner.exe not found in Flutter output!"
+          if (!(Test-Path "flutter_app\build\windows\x64\runner\Release\DevCleanerApp.exe")) {
+            Write-Error "DevCleanerApp.exe not found in Flutter output!"
             exit 1
           }
 

@@ -5,7 +5,7 @@
 #define MyAppVersion GetEnv("APP_VERSION")
 #define MyAppPublisher "DevCleaner Contributors"
 #define MyAppURL "https://github.com/NeverMorewd/DevCleaner"
-#define MyAppExeName "DevCleaner.exe"
+#define MyAppExeName "DevCleanerApp.exe"
 
 [Setup]
 AppId={{6C4F2A3E-8B7D-4F5E-9A2C-1D3E5F7A9B0C}
@@ -44,7 +44,7 @@ Source: "..\flutter_app\build\windows\x64\runner\Release\*"; DestDir: "{app}"; F
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

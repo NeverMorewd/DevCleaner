@@ -94,7 +94,7 @@ BEGIN
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "DevCleaner" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 NeverMorewd. All rights reserved." "\0"
-            VALUE "OriginalFilename", "DevCleaner.exe" "\0"
+            VALUE "OriginalFilename", "DevCleanerApp.exe" "\0"
             VALUE "ProductName", "DevCleaner" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
