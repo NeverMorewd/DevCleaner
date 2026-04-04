@@ -4,11 +4,11 @@
 #define MyAppName "DevCleaner"
 #define MyAppVersion GetEnv("APP_VERSION")
 #define MyAppPublisher "DevCleaner Contributors"
-#define MyAppURL "https://github.com/your-username/dev-cleaner"
-#define MyAppExeName "flutter_app.exe"
+#define MyAppURL "https://github.com/NeverMorewd/DevCleaner"
+#define MyAppExeName "DevCleaner.exe"
 
 [Setup]
-AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
+AppId={{6C4F2A3E-8B7D-4F5E-9A2C-1D3E5F7A9B0C}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

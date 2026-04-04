@@ -64,6 +64,13 @@ jobs:
             "target\x86_64-pc-windows-msvc\release\devcleaner.exe" `
             "flutter_app\build\windows\x64\runner\Release\devcleaner.exe"
 
+      - name: Verify Flutter output exe exists
+        run: |
+          if (!(Test-Path "flutter_app\build\windows\x64\runner\Release\DevCleaner.exe")) {
+            Write-Error "DevCleaner.exe not found in Flutter output!"
+            exit 1
+          }
+
       # ── Inno Setup installer ──────────────────────────────────────────────
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
