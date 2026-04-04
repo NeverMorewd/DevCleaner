@@ -69,13 +69,20 @@ class ScanProvider extends ChangeNotifier {
   // ── Elapsed time tracking ────────────────────────────────────────────────
   final Stopwatch _scanWatch = Stopwatch();
   Timer? _elapsedTicker;
+  Duration _lastScanDuration = Duration.zero;
+
+  /// Total duration of the most recently completed scan.
+  Duration get lastScanDuration => _lastScanDuration;
 
   /// Seconds elapsed since the current/last scan started.
   int get elapsedSeconds => _scanWatch.elapsed.inSeconds;
 
+  /// Formatted elapsed time with tenths of a second, e.g. "1:23.4"
   String get elapsedFormatted {
-    final s = elapsedSeconds;
-    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+    final elapsed = _scanWatch.elapsed;
+    final s = elapsed.inSeconds;
+    final tenths = (elapsed.inMilliseconds % 1000) ~/ 100;
+    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}.$tenths';
   }
 
   ScanProvider(this._daemon) {
@@ -201,7 +208,7 @@ class ScanProvider extends ChangeNotifier {
     _scanWatch.reset();
     _scanWatch.start();
     _elapsedTicker?.cancel();
-    _elapsedTicker = Timer.periodic(const Duration(seconds: 1), (_) => notifyListeners());
+    _elapsedTicker = Timer.periodic(const Duration(milliseconds: 100), (_) => notifyListeners());
     notifyListeners();
 
     try {
@@ -239,6 +246,7 @@ class ScanProvider extends ChangeNotifier {
       _error = e.toString();
       _state = ScanState.error;
     }
+    _lastScanDuration = _scanWatch.elapsed;
     _scanWatch.stop();
     _elapsedTicker?.cancel();
     _elapsedTicker = null;

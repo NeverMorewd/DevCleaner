@@ -933,10 +933,32 @@ class _ScanPageState extends State<ScanPage> {
     return Stack(children: [
       Column(children: [
         Expanded(child: _buildList(context, scan, items)),
+        _buildScanDurationFooter(context, scan),
         if (scan.selectedCount > 0) _buildBottomBar(context, scan),
       ]),
       if (scan.isDeleting) _buildDeleteOverlay(context, scan),
     ]);
+  }
+
+  Widget _buildScanDurationFooter(BuildContext context, ScanProvider scan) {
+    final d = scan.lastScanDuration;
+    if (d == Duration.zero) return const SizedBox.shrink();
+    final secs = d.inMilliseconds / 1000.0;
+    final label = 'Scan completed in ${secs.toStringAsFixed(1)} s';
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
   }
 
   Widget _buildList(BuildContext context, ScanProvider scan, List<CleanItem> items) {
