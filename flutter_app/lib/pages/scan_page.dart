@@ -204,30 +204,43 @@ class _ScanPageState extends State<ScanPage> {
     return Consumer2<ScanProvider, ConfigProvider>(
       builder: (context, scan, config, _) {
         final hasContent = scan.state == ScanState.done || scan.state == ScanState.error;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildScannerHeader(context, scan, config),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeInOut,
-              child: _scannersExpanded
-                  ? ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.52,
-                      ),
-                      child: SingleChildScrollView(
-                        child: _buildScannerPanel(context, config),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
+        return CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.f5): () {
+              if (scan.state != ScanState.scanning) {
+                scan.startScan();
+                setState(() { _scannersExpanded = false; _resultsExpanded = true; });
+              }
+            },
+          },
+          child: Focus(
+            autofocus: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildScannerHeader(context, scan, config),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeInOut,
+                  child: _scannersExpanded
+                      ? ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.of(context).size.height * 0.52,
+                          ),
+                          child: SingleChildScrollView(
+                            child: _buildScannerPanel(context, config),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                if (hasContent) ...[
+                  _buildResultsHeader(context, scan),
+                  if (_resultsExpanded) Expanded(child: _buildResultsContent(context, scan)),
+                ] else
+                  Expanded(child: _buildIdleState(context, config)),
+              ],
             ),
-            if (hasContent) ...[
-              _buildResultsHeader(context, scan),
-              if (_resultsExpanded) Expanded(child: _buildResultsContent(context, scan)),
-            ] else
-              Expanded(child: _buildIdleState(context)),
-          ],
+          ),
         );
       },
     );
@@ -649,7 +662,8 @@ class _ScanPageState extends State<ScanPage> {
   void _showWhitelistDialog(BuildContext context, ConfigProvider config) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => _WhitelistDialog(config: config, dialogContext: ctx),
+      barrierDismissible: true,
+      builder: (ctx) => _WhitelistDialog(config: config),
     );
   }
 
@@ -1240,21 +1254,35 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 
-  Widget _buildIdleState(BuildContext context) {
+  Widget _buildIdleState(BuildContext context, ConfigProvider config) {
     final theme  = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final anyEnabled = config.scanners.values.any((v) => v);
+
     return Container(
       color: isDark ? const Color(0xFF0D1520) : const Color(0xFFF6F9FB),
       child: Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.manage_search_rounded, size: 52, color: theme.colorScheme.outlineVariant),
+          Icon(
+            anyEnabled ? Icons.manage_search_rounded : Icons.search_off_rounded,
+            size: 52,
+            color: theme.colorScheme.outlineVariant,
+          ),
           const SizedBox(height: 12),
-          Text('Ready to scan', style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600,
-          )),
+          Text(
+            anyEnabled ? 'Ready to scan' : 'No scanners enabled',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('Configure scanners above and click Start Scan',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
+          Text(
+            anyEnabled
+                ? 'Configure scanners above and click Start Scan'
+                : 'Enable at least one scanner in the panel above',
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+          ),
         ]),
       ),
     );

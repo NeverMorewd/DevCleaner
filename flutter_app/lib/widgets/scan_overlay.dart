@@ -12,7 +12,7 @@ class ScanOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final progress = scan.scannersTotal > 0
-        ? scan.scannersDone / scan.scannersTotal
+        ? (scan.scannersDone / scan.scannersTotal).clamp(0.0, 1.0)
         : null;
 
     return GestureDetector(

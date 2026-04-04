@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -32,9 +33,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _doSave(ConfigProvider config) async {
     try {
       await config.saveToFile();
+      if (!mounted) return;
       widget.onStatus?.call('Saved', false);
-      Future.delayed(const Duration(seconds: 2), () { widget.onStatus?.call(null, false); });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) widget.onStatus?.call(null, false);
+      });
     } catch (e) {
+      if (!mounted) return;
       widget.onStatus?.call('Save failed: $e', true);
     }
   }
@@ -93,6 +98,18 @@ class _SettingsPageState extends State<SettingsPage> {
           onAdd: () async {
             final p = _rootCtrl.text.trim();
             if (p.isEmpty) return;
+            final messenger = ScaffoldMessenger.of(context);
+            if (!await Directory(p).exists()) {
+              if (mounted) {
+                messenger.showSnackBar(SnackBar(
+                  content: Text('Path does not exist: $p'),
+                  duration: const Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ));
+              }
+              return;
+            }
             config.addProjectRoot(p);
             _rootCtrl.clear();
             await _immediateSave(config);

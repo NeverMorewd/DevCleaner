@@ -6,7 +6,6 @@ use walkdir::WalkDir;
 /// Does NOT follow symlinks or junctions (`follow_links(false)` is the WalkDir default).
 /// This prevents infinite loops in directories that contain junction points, and avoids
 /// double-counting Docker WSL2 VHD disk images which are exposed as junctions on Windows.
-#[allow(dead_code)]
 pub fn dir_size(path: &Path) -> u64 {
     if path.is_file() {
         return path.metadata().map(|m| m.len()).unwrap_or(0);
@@ -38,7 +37,7 @@ pub fn dir_size_abortable(
         .filter_map(|e| e.ok())
     {
         count += 1;
-        if count.is_multiple_of(500) && abort.load(Ordering::Relaxed) {
+        if count % 500 == 0 && abort.load(Ordering::Relaxed) {
             return total;
         }
         if entry.file_type().is_file() {

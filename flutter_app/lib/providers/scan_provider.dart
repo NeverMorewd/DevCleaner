@@ -217,7 +217,11 @@ class ScanProvider extends ChangeNotifier {
       final resp = await _daemon.deleteItems(_scanId!, paths);
 
       // Guard: if RPC itself failed, don't touch the item list
-      if (resp['result'] == null) return;
+      if (resp['result'] == null) {
+        _lastDeleteErrors = [];
+        notifyListeners();
+        return;
+      }
 
       // Parse per-item errors from the final response
       final result = resp['result'] as Map<String, dynamic>;
