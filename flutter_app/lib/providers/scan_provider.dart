@@ -215,7 +215,14 @@ class ScanProvider extends ChangeNotifier {
       } else {
         final result = resp['result'] as Map<String, dynamic>? ?? {};
         _scanId = result['scan_id'] as String?;
-        // Items were already streamed via _onScanItems; no parsing needed here.
+        // Primary path: items already appended by _onScanItems during scanning.
+        // Fallback: if no items arrived via streaming (e.g. older daemon binary),
+        // read them from the results field in the final response.
+        if (_groups.isEmpty && result['results'] != null) {
+          _groups = (result['results'] as List<dynamic>)
+              .map((e) => ScanResultGroup.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
         _state = ScanState.done;
       }
     } catch (e) {

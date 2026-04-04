@@ -276,7 +276,12 @@ class _ScanPageState extends State<ScanPage> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 220),
               child: Text(
-                scan.progress.isNotEmpty ? scan.progress : 'Scanning\u2026',
+                // Only show a specific scanner name once a progress notification
+                // has arrived for the *current* scan (scannersDone > 0).
+                // Avoids showing a stale label from the previous scan.
+                scan.scannersDone > 0 && scan.progress.isNotEmpty
+                    ? scan.progress
+                    : 'Scanning\u2026',
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 overflow: TextOverflow.ellipsis,
               ),

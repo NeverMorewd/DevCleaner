@@ -229,6 +229,11 @@ fn handle_start_scan(
                 .subsec_nanos()
         );
 
+        // Serialize results BEFORE moving into state (needed for the final response).
+        // The final response includes the full results list as a fallback for clients
+        // that do not support scan_items streaming notifications.
+        let results_val = serde_json::to_value(&all_results).unwrap_or(Value::Null);
+
         // Store results in daemon state for later delete operations
         {
             let mut st = state_clone.lock().unwrap();
@@ -246,12 +251,12 @@ fn handle_start_scan(
             ))
             .unwrap()
         } else {
-            // Items were already streamed via scan_items notifications;
-            // the final response only carries totals and the scan_id.
             serde_json::to_value(RpcResponse::ok(
                 id,
                 json!({
                     "scan_id": scan_id,
+                    // Full results included for backward compat / streaming fallback
+                    "results": results_val,
                     "grand_total_size": grand_total_size,
                     "grand_total_items": grand_total_items,
                 }),
