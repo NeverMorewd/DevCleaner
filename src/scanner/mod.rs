@@ -92,7 +92,7 @@ pub fn run_all_scanners(
         "Conan"
     );
     maybe_scan!(
-        config.scanners.build_artifacts,
+        config.artifacts.any_enabled(),
         artifacts::scan(config, abort),
         "Build Artifacts"
     );

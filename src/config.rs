@@ -204,8 +204,6 @@ pub struct ScannersConfig {
     #[serde(default)]
     pub cpp_conan: bool,
     #[serde(default)]
-    pub build_artifacts: bool,
-    #[serde(default)]
     pub env_vars: bool,
     #[serde(default)]
     pub dump_files: bool,
@@ -249,6 +247,22 @@ pub struct ArtifactsConfig {
     pub project_roots: Vec<String>,
 }
 
+impl ArtifactsConfig {
+    /// Returns true if at least one per-language artifact toggle is enabled.
+    /// Used by the scanner runner to decide whether to invoke `artifacts::scan`.
+    pub fn any_enabled(&self) -> bool {
+        self.scan_csharp_obj_bin
+            || self.scan_rust_target
+            || self.scan_node_modules
+            || self.scan_frontend_dist
+            || self.scan_java_build
+            || self.scan_python_cache
+            || self.scan_cmake_build
+            || self.scan_flutter_build
+            || self.scan_go_vendor
+    }
+}
+
 /// Increment this when new scanners are added or detector logic changes.
 /// Configs with a lower version get a one-time re-detection pass.
 const SMART_DEFAULTS_VERSION: u32 = 2;
@@ -271,7 +285,6 @@ impl Default for Config {
                 gradle: true,
                 cpp_vcpkg: false,
                 cpp_conan: false,
-                build_artifacts: true,
                 env_vars: true,
                 dump_files: true,
                 android_sdk: true,
@@ -312,7 +325,7 @@ impl Config {
     /// Build a first-run default by probing installed ecosystems.
     /// Scanners are enabled only for ecosystems that are actually present.
     /// Universally-useful scanners (env_vars, dump_files, windows_temp,
-    /// browser_cache, build_artifacts) are always on.
+    /// browser_cache) are always on.
     pub fn smart_default() -> Self {
         let env = detector::detect();
         Config {
@@ -331,7 +344,6 @@ impl Config {
                 gradle: env.gradle,
                 cpp_vcpkg: env.vcpkg,
                 cpp_conan: env.conan,
-                build_artifacts: true,
                 env_vars: true,
                 dump_files: true,
                 android_sdk: env.android_sdk,

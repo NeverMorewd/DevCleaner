@@ -261,7 +261,6 @@ fn interactive_config_edit(config: &mut config::Config) -> Result<()> {
         "Gradle (Java)",
         "vcpkg (C++)",
         "Conan (C++)",
-        "Build Artifacts (obj/bin/target)",
         "Invalid Environment Variables (PATH, JAVA_HOME, …)",
         "Dump Files (.dmp crash & WER reports)",
         "Android SDK (build-tools, platforms, system-images, AVDs)",
@@ -282,7 +281,6 @@ fn interactive_config_edit(config: &mut config::Config) -> Result<()> {
         config.scanners.gradle,
         config.scanners.cpp_vcpkg,
         config.scanners.cpp_conan,
-        config.scanners.build_artifacts,
         config.scanners.env_vars,
         config.scanners.dump_files,
         config.scanners.android_sdk,
@@ -308,66 +306,63 @@ fn interactive_config_edit(config: &mut config::Config) -> Result<()> {
     config.scanners.gradle = selected.contains(&6);
     config.scanners.cpp_vcpkg = selected.contains(&7);
     config.scanners.cpp_conan = selected.contains(&8);
-    config.scanners.build_artifacts = selected.contains(&9);
-    config.scanners.env_vars = selected.contains(&10);
-    config.scanners.dump_files = selected.contains(&11);
-    config.scanners.android_sdk = selected.contains(&12);
-    config.scanners.ide_cache = selected.contains(&13);
-    config.scanners.windows_temp = selected.contains(&14);
-    config.scanners.rustup = selected.contains(&15);
-    config.scanners.browser_cache = selected.contains(&16);
-    config.scanners.flutter_pub = selected.contains(&17);
+    config.scanners.env_vars = selected.contains(&9);
+    config.scanners.dump_files = selected.contains(&10);
+    config.scanners.android_sdk = selected.contains(&11);
+    config.scanners.ide_cache = selected.contains(&12);
+    config.scanners.windows_temp = selected.contains(&13);
+    config.scanners.rustup = selected.contains(&14);
+    config.scanners.browser_cache = selected.contains(&15);
+    config.scanners.flutter_pub = selected.contains(&16);
 
-    // Artifact sub-options if enabled
-    if config.scanners.build_artifacts {
-        let art_options = vec![
-            "C# / .NET  — obj/ bin/",
-            "Rust        — target/",
-            "Node.js     — node_modules/",
-            "JS/TS       — .next/ .nuxt/ .svelte-kit/ dist/ (frontend frameworks)",
-            "Java        — Maven target/ Gradle build/ Android build/",
-            "Python      — __pycache__/ .pytest_cache/ .mypy_cache/ build/ dist/",
-            "C/C++       — CMakeFiles/ cmake-build-*/ build/ out/",
-            "Flutter     — build/ .dart_tool/",
-            "Go          — vendor/",
-        ];
-        let art_defaults = vec![
-            config.artifacts.scan_csharp_obj_bin,
-            config.artifacts.scan_rust_target,
-            config.artifacts.scan_node_modules,
-            config.artifacts.scan_frontend_dist,
-            config.artifacts.scan_java_build,
-            config.artifacts.scan_python_cache,
-            config.artifacts.scan_cmake_build,
-            config.artifacts.scan_flutter_build,
-            config.artifacts.scan_go_vendor,
-        ];
-        let art_sel = MultiSelect::new()
-            .with_prompt(
-                "Select artifact types to scan (auto-discovery enabled for common dev paths)",
-            )
-            .items(&art_options)
-            .defaults(&art_defaults)
-            .interact()?;
-        config.artifacts.scan_csharp_obj_bin = art_sel.contains(&0);
-        config.artifacts.scan_rust_target = art_sel.contains(&1);
-        config.artifacts.scan_node_modules = art_sel.contains(&2);
-        config.artifacts.scan_frontend_dist = art_sel.contains(&3);
-        config.artifacts.scan_java_build = art_sel.contains(&4);
-        config.artifacts.scan_python_cache = art_sel.contains(&5);
-        config.artifacts.scan_cmake_build = art_sel.contains(&6);
-        config.artifacts.scan_flutter_build = art_sel.contains(&7);
-        config.artifacts.scan_go_vendor = art_sel.contains(&8);
+    // Build artifact sub-options (scanner runs when any artifact type is selected)
+    let art_options = vec![
+        "C# / .NET  — obj/ bin/",
+        "Rust        — target/",
+        "Node.js     — node_modules/",
+        "JS/TS       — .next/ .nuxt/ .svelte-kit/ dist/ (frontend frameworks)",
+        "Java        — Maven target/ Gradle build/ Android build/",
+        "Python      — __pycache__/ .pytest_cache/ .mypy_cache/ build/ dist/",
+        "C/C++       — CMakeFiles/ cmake-build-*/ build/ out/",
+        "Flutter     — build/ .dart_tool/",
+        "Go          — vendor/",
+    ];
+    let art_defaults = vec![
+        config.artifacts.scan_csharp_obj_bin,
+        config.artifacts.scan_rust_target,
+        config.artifacts.scan_node_modules,
+        config.artifacts.scan_frontend_dist,
+        config.artifacts.scan_java_build,
+        config.artifacts.scan_python_cache,
+        config.artifacts.scan_cmake_build,
+        config.artifacts.scan_flutter_build,
+        config.artifacts.scan_go_vendor,
+    ];
+    let art_sel = MultiSelect::new()
+        .with_prompt(
+            "Build artifact types to scan (auto-discovery enabled for common dev paths)",
+        )
+        .items(&art_options)
+        .defaults(&art_defaults)
+        .interact()?;
+    config.artifacts.scan_csharp_obj_bin = art_sel.contains(&0);
+    config.artifacts.scan_rust_target = art_sel.contains(&1);
+    config.artifacts.scan_node_modules = art_sel.contains(&2);
+    config.artifacts.scan_frontend_dist = art_sel.contains(&3);
+    config.artifacts.scan_java_build = art_sel.contains(&4);
+    config.artifacts.scan_python_cache = art_sel.contains(&5);
+    config.artifacts.scan_cmake_build = art_sel.contains(&6);
+    config.artifacts.scan_flutter_build = art_sel.contains(&7);
+    config.artifacts.scan_go_vendor = art_sel.contains(&8);
 
-        println!("\n  Auto-discovery scans common paths (~/source/repos, ~/projects, etc.)");
-        if !config.artifacts.project_roots.is_empty() {
-            println!("  Additional project roots:");
-            for root in &config.artifacts.project_roots {
-                println!("    • {}", root);
-            }
+    println!("\n  Auto-discovery scans common paths (~/source/repos, ~/projects, etc.)");
+    if !config.artifacts.project_roots.is_empty() {
+        println!("  Additional project roots:");
+        for root in &config.artifacts.project_roots {
+            println!("    • {}", root);
         }
-        println!("  Add more roots: devcleaner config add-root <path>");
     }
+    println!("  Add more roots: devcleaner config add-root <path>");
 
     config.save()?;
     display::print_success("Configuration saved.");

@@ -61,6 +61,8 @@ class ScanProvider extends ChangeNotifier {
   /// Errors from the most recent deleteSelected() call.
   List<DeleteError> _lastDeleteErrors = [];
 
+  final Set<String> _seenPaths = {};
+
   StreamSubscription<Map<String, dynamic>>? _scanProgressSub;
   StreamSubscription<Map<String, dynamic>>? _scanItemsSub;
 
@@ -179,6 +181,8 @@ class ScanProvider extends ChangeNotifier {
   void _onScanItems(Map<String, dynamic> params) {
     if (_state != ScanState.scanning) return;
     final group = ScanResultGroup.fromJson(params);
+    group.items.removeWhere(
+        (item) => !_seenPaths.add(item.path.toLowerCase()));
     if (group.items.isNotEmpty) {
       _groups.add(group);
       notifyListeners();
@@ -188,6 +192,7 @@ class ScanProvider extends ChangeNotifier {
   Future<void> startScan() async {
     _state = ScanState.scanning;
     _groups = [];
+    _seenPaths.clear();
     _error = null;
     _scannersDone = 0;
     _scannersTotal = 0;
@@ -219,9 +224,14 @@ class ScanProvider extends ChangeNotifier {
         // Fallback: if no items arrived via streaming (e.g. older daemon binary),
         // read them from the results field in the final response.
         if (_groups.isEmpty && result['results'] != null) {
-          _groups = (result['results'] as List<dynamic>)
+          final allGroups = (result['results'] as List<dynamic>)
               .map((e) => ScanResultGroup.fromJson(e as Map<String, dynamic>))
               .toList();
+          final seen = <String>{};
+          for (final g in allGroups) {
+            g.items.removeWhere((item) => !seen.add(item.path.toLowerCase()));
+          }
+          _groups = allGroups.where((g) => g.items.isNotEmpty).toList();
         }
         _state = ScanState.done;
       }

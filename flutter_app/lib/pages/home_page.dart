@@ -101,7 +101,6 @@ class HomePage extends StatelessWidget {
       ('pip', 'pip / uv', Icons.terminal, 'Python packages'),
       ('maven', 'Maven', Icons.coffee, 'Java packages'),
       ('gradle', 'Gradle', Icons.build, 'Java builds'),
-      ('build_artifacts', 'Build Artifacts', Icons.folder_delete, 'obj/bin/target'),
       ('env_vars', 'Env Vars', Icons.settings_system_daydream, 'Invalid entries'),
       ('dump_files', 'Dump Files', Icons.bug_report, 'Crash reports'),
       ('android_sdk', 'Android SDK', Icons.android, 'Old SDK versions'),

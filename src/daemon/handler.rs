@@ -160,7 +160,7 @@ fn handle_start_scan(
             config.scanners.gradle,
             config.scanners.cpp_vcpkg,
             config.scanners.cpp_conan,
-            config.scanners.build_artifacts,
+            config.artifacts.any_enabled(), // build_artifacts derived from per-language toggles
             config.scanners.env_vars,
             config.scanners.dump_files,
             config.scanners.android_sdk,

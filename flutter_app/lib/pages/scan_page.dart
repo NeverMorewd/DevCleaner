@@ -126,17 +126,12 @@ bool _groupAnyEnabled(ConfigProvider config, _Group group) {
 }
 
 void _toggleGroupAll(ConfigProvider config, _Group group, bool v) {
-  bool hasArtifact = false;
   for (final child in group.children) {
     if (child.kind == 'scanner') {
       config.updateScanner(child.key, v);
     } else {
       config.updateArtifact(child.key, v);
-      if (v) hasArtifact = true;
     }
-  }
-  if (v && hasArtifact && !(config.scanners['build_artifacts'] ?? false)) {
-    config.updateScanner('build_artifacts', true);
   }
 }
 
@@ -145,9 +140,6 @@ void _toggleChild(ConfigProvider config, _GroupChild child, bool v) {
     config.updateScanner(child.key, v);
   } else {
     config.updateArtifact(child.key, v);
-    if (v && !(config.scanners['build_artifacts'] ?? false)) {
-      config.updateScanner('build_artifacts', true);
-    }
   }
 }
 
