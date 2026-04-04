@@ -167,6 +167,34 @@ class _ScanPageState extends State<ScanPage> {
   Timer? _configSaveTimer;
   final Set<String> _expanded = {};
 
+  // ── Scan elapsed timer ────────────────────────────────────────────────────
+  DateTime? _scanStart;
+  Timer?    _elapsedTimer;
+  int       _elapsedSecs = 0;
+
+  void _startElapsedTimer() {
+    _elapsedTimer?.cancel();
+    _scanStart   = DateTime.now();
+    _elapsedSecs = 0;
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
+        _elapsedSecs = DateTime.now().difference(_scanStart!).inSeconds;
+      });
+    });
+  }
+
+  void _stopElapsedTimer() {
+    _elapsedTimer?.cancel();
+    _elapsedTimer = null;
+  }
+
+  String _formatElapsed(int secs) {
+    final m = secs ~/ 60;
+    final s = secs % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   void _toggleExpand(String key) => setState(() =>
       _expanded.contains(key) ? _expanded.remove(key) : _expanded.add(key));
 
@@ -180,6 +208,7 @@ class _ScanPageState extends State<ScanPage> {
   @override
   void dispose() {
     _configSaveTimer?.cancel();
+    _elapsedTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -189,6 +218,10 @@ class _ScanPageState extends State<ScanPage> {
     return Consumer2<ScanProvider, ConfigProvider>(
       builder: (context, scan, config, _) {
         final hasContent = scan.state == ScanState.done || scan.state == ScanState.error;
+        // Stop the elapsed timer as soon as scanning finishes
+        if (scan.state != ScanState.scanning && _elapsedTimer != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _stopElapsedTimer());
+        }
         final scannerPanel = SingleChildScrollView(
           child: _buildScannerPanel(context, config),
         );
@@ -198,6 +231,7 @@ class _ScanPageState extends State<ScanPage> {
             const SingleActivator(LogicalKeyboardKey.f5): () {
               if (scan.state != ScanState.scanning) {
                 scan.startScan();
+                _startElapsedTimer();
                 setState(() { _scannersExpanded = false; _resultsExpanded = true; });
               }
             },
@@ -271,7 +305,7 @@ class _ScanPageState extends State<ScanPage> {
             ),
             const SizedBox(width: 8),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 260),
+              constraints: const BoxConstraints(maxWidth: 220),
               child: Text(
                 scan.progress.isNotEmpty ? scan.progress : 'Scanning\u2026',
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -285,6 +319,14 @@ class _ScanPageState extends State<ScanPage> {
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             ],
             const SizedBox(width: 10),
+            Text(
+              _formatElapsed(_elapsedSecs),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                fontFamily: 'monospace',
+              ),
+            ),
+            const SizedBox(width: 10),
           ],
           if (scan.state == ScanState.done) ...[
             Text('${scan.totalCount} items \u00b7 ${_hs(scan.totalSize)} found',
@@ -297,6 +339,7 @@ class _ScanPageState extends State<ScanPage> {
               icon: Icons.search,
               onTap: () {
                 scan.startScan();
+                _startElapsedTimer();
                 setState(() { _scannersExpanded = false; _resultsExpanded = true; });
               },
             ),

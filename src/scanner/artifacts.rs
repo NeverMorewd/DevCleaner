@@ -67,6 +67,12 @@ pub fn scan(config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
         }
     }
 
+    // Remove any root that is already covered by an ancestor root in the list.
+    // Example: if both `source` and `source\repos` are present, scanning `source`
+    // would recurse into `source\repos` anyway, causing every project to appear twice.
+    let all_roots = roots.clone();
+    roots.retain(|p| !all_roots.iter().any(|other| other != p && p.starts_with(other)));
+
     if roots.is_empty() {
         result.error = Some(
             "No project roots found. Add one with: devcleaner config add-root <path>".to_string(),
