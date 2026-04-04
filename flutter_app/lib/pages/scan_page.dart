@@ -239,7 +239,12 @@ class _ScanPageState extends State<ScanPage> {
     final isScanning = scan.state == ScanState.scanning;
     final enabledCount = config.scanners.values.where((v) => v).length;
 
-    return Container(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _scannersExpanded = !_scannersExpanded),
+        child: Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
@@ -250,10 +255,8 @@ class _ScanPageState extends State<ScanPage> {
       ),
       child: Row(
         children: [
-          _CollapseBtn(
-            expanded: _scannersExpanded,
-            onTap: () => setState(() => _scannersExpanded = !_scannersExpanded),
-          ),
+          // onTap is null — the whole row GestureDetector handles it
+          _CollapseBtn(expanded: _scannersExpanded),
           const SizedBox(width: 4),
           Text('Scanners',
               style: theme.textTheme.labelMedium
@@ -298,6 +301,8 @@ class _ScanPageState extends State<ScanPage> {
               },
             ),
         ],
+      ),
+        ),
       ),
     );
   }
@@ -795,7 +800,12 @@ class _ScanPageState extends State<ScanPage> {
     final isDark = theme.brightness == Brightness.dark;
     final isDone = scan.state == ScanState.done;
 
-    return Container(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _resultsExpanded = !_resultsExpanded),
+        child: Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
@@ -807,10 +817,8 @@ class _ScanPageState extends State<ScanPage> {
         ),
       ),
       child: Row(children: [
-        _CollapseBtn(
-          expanded: _resultsExpanded,
-          onTap: () => setState(() => _resultsExpanded = !_resultsExpanded),
-        ),
+        // onTap is null — the whole row GestureDetector handles it
+        _CollapseBtn(expanded: _resultsExpanded),
         const SizedBox(width: 4),
         Text('Results',
             style: theme.textTheme.labelMedium
@@ -884,6 +892,8 @@ class _ScanPageState extends State<ScanPage> {
           _SmallTextBtn(label: 'None', onTap: () => scan.selectAll(false)),
         ],
       ]),
+        ),
+      ),
     );
   }
 
@@ -1594,21 +1604,18 @@ class _PatternRow extends StatelessWidget {
 
 // ── Small reusable widgets ────────────────────────────────────────────────────
 
+/// Pure visual expand/collapse indicator — tap is handled by the parent
+/// row's GestureDetector (whole-row click area).
 class _CollapseBtn extends StatelessWidget {
   final bool expanded;
-  final VoidCallback onTap;
-  const _CollapseBtn({required this.expanded, required this.onTap});
+  const _CollapseBtn({required this.expanded});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Icon(expanded ? Icons.expand_less : Icons.expand_more,
-            size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Icon(expanded ? Icons.expand_less : Icons.expand_more,
+          size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
     );
   }
 }
