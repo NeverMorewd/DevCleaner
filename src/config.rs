@@ -14,6 +14,14 @@ pub struct Config {
     pub env_vars_options: EnvVarsOptions,
     #[serde(default)]
     pub windows_temp_options: WindowsTempOptions,
+    #[serde(default)]
+    pub ide_cache_options: IdeCacheOptions,
+    #[serde(default)]
+    pub browser_cache_options: BrowserCacheOptions,
+    #[serde(default)]
+    pub dump_files_options: DumpFilesOptions,
+    #[serde(default)]
+    pub android_sdk_options: AndroidSdkOptions,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -79,6 +87,86 @@ impl Default for WindowsTempOptions {
             wu_download: true,
             inet_cache: true,
             wer: true,
+        }
+    }
+}
+
+/// Sub-options for the ide_cache scanner.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct IdeCacheOptions {
+    #[serde(default = "bool_true")]
+    pub jetbrains: bool, // JetBrains IDEs (IntelliJ, Rider, CLion, etc.)
+    #[serde(default = "bool_true")]
+    pub vscode: bool, // VS Code / Cursor / Windsurf
+}
+impl Default for IdeCacheOptions {
+    fn default() -> Self {
+        Self {
+            jetbrains: true,
+            vscode: true,
+        }
+    }
+}
+
+/// Sub-options for the browser_cache scanner.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BrowserCacheOptions {
+    #[serde(default = "bool_true")]
+    pub chrome: bool,
+    #[serde(default = "bool_true")]
+    pub edge: bool,
+    #[serde(default = "bool_true")]
+    pub firefox: bool,
+}
+impl Default for BrowserCacheOptions {
+    fn default() -> Self {
+        Self {
+            chrome: true,
+            edge: true,
+            firefox: true,
+        }
+    }
+}
+
+/// Sub-options for the dump_files scanner.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DumpFilesOptions {
+    #[serde(default = "bool_true")]
+    pub wer: bool, // Windows Error Reporting archives
+    #[serde(default = "bool_true")]
+    pub crash_dumps: bool, // CrashDumps folder
+    #[serde(default = "bool_true")]
+    pub minidumps: bool, // *.dmp files in temp
+}
+impl Default for DumpFilesOptions {
+    fn default() -> Self {
+        Self {
+            wer: true,
+            crash_dumps: true,
+            minidumps: true,
+        }
+    }
+}
+
+/// Sub-options for the android_sdk scanner.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AndroidSdkOptions {
+    #[serde(default = "bool_true")]
+    pub old_platforms: bool, // Old Android platform SDKs
+    #[serde(default = "bool_true")]
+    pub old_build_tools: bool, // Old build tool versions
+    #[serde(default = "bool_true")]
+    pub system_images: bool, // SDK system images (large)
+    #[serde(default = "bool_true")]
+    pub emulator: bool, // Old emulator packages
+}
+impl Default for AndroidSdkOptions {
+    fn default() -> Self {
+        Self {
+            old_platforms: true,
+            old_build_tools: true,
+            system_images: true,
+            emulator: true,
         }
     }
 }
@@ -208,6 +296,10 @@ impl Default for Config {
             filter: FilterConfig::default(),
             env_vars_options: EnvVarsOptions::default(),
             windows_temp_options: WindowsTempOptions::default(),
+            ide_cache_options: IdeCacheOptions::default(),
+            browser_cache_options: BrowserCacheOptions::default(),
+            dump_files_options: DumpFilesOptions::default(),
+            android_sdk_options: AndroidSdkOptions::default(),
         }
     }
 }
@@ -264,6 +356,10 @@ impl Config {
             filter: FilterConfig::default(),
             env_vars_options: EnvVarsOptions::default(),
             windows_temp_options: WindowsTempOptions::default(),
+            ide_cache_options: IdeCacheOptions::default(),
+            browser_cache_options: BrowserCacheOptions::default(),
+            dump_files_options: DumpFilesOptions::default(),
+            android_sdk_options: AndroidSdkOptions::default(),
         }
     }
 

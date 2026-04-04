@@ -4,7 +4,7 @@ use crate::utils::old_versions;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
+pub fn scan(config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Android SDK");
 
     let local = match dirs::data_local_dir() {
@@ -19,18 +19,22 @@ pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let sdk_root = local.join("Android").join("Sdk");
 
     // build-tools: keep only newest
-    let build_tools = sdk_root.join("build-tools");
-    if build_tools.exists() {
-        scan_build_tools(&build_tools, &mut result, abort);
+    if config.android_sdk_options.old_build_tools {
+        let build_tools = sdk_root.join("build-tools");
+        if build_tools.exists() {
+            scan_build_tools(&build_tools, &mut result, abort);
+        }
     }
 
     // platforms: android-NN dirs, keep newest 2
-    let platforms = sdk_root.join("platforms");
-    if platforms.exists() {
-        scan_platforms(&platforms, &mut result, abort);
+    if config.android_sdk_options.old_platforms {
+        let platforms = sdk_root.join("platforms");
+        if platforms.exists() {
+            scan_platforms(&platforms, &mut result, abort);
+        }
     }
 
-    // NOTE: system-images and AVDs are NOT scanned.
+    // NOTE: system-images and AVDs are NOT scanned automatically.
     // - system-images: installed to support specific AVD configurations chosen by the user.
     //   Deleting them breaks any AVD that references them; use Android SDK Manager to manage.
     // - AVDs (.android/avd/): user-created virtual devices, not regenerable cache.

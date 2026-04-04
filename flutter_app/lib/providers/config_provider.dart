@@ -171,6 +171,78 @@ class ConfigProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Map<String, bool> get ideCacheOptions {
+    final o = _config['ide_cache_options'] as Map? ?? {};
+    return {
+      'jetbrains': o['jetbrains'] as bool? ?? true,
+      'vscode': o['vscode'] as bool? ?? true,
+    };
+  }
+
+  void updateIdeCacheOption(String key, bool value) {
+    final opts =
+        Map<String, dynamic>.from(_config['ide_cache_options'] as Map? ?? {});
+    opts[key] = value;
+    _config =
+        Map<String, dynamic>.from(_config)..['ide_cache_options'] = opts;
+    notifyListeners();
+  }
+
+  Map<String, bool> get browserCacheOptions {
+    final o = _config['browser_cache_options'] as Map? ?? {};
+    return {
+      'chrome': o['chrome'] as bool? ?? true,
+      'edge': o['edge'] as bool? ?? true,
+      'firefox': o['firefox'] as bool? ?? true,
+    };
+  }
+
+  void updateBrowserCacheOption(String key, bool value) {
+    final opts = Map<String, dynamic>.from(
+        _config['browser_cache_options'] as Map? ?? {});
+    opts[key] = value;
+    _config =
+        Map<String, dynamic>.from(_config)..['browser_cache_options'] = opts;
+    notifyListeners();
+  }
+
+  Map<String, bool> get dumpFilesOptions {
+    final o = _config['dump_files_options'] as Map? ?? {};
+    return {
+      'wer': o['wer'] as bool? ?? true,
+      'crash_dumps': o['crash_dumps'] as bool? ?? true,
+      'minidumps': o['minidumps'] as bool? ?? true,
+    };
+  }
+
+  void updateDumpFilesOption(String key, bool value) {
+    final opts =
+        Map<String, dynamic>.from(_config['dump_files_options'] as Map? ?? {});
+    opts[key] = value;
+    _config =
+        Map<String, dynamic>.from(_config)..['dump_files_options'] = opts;
+    notifyListeners();
+  }
+
+  Map<String, bool> get androidSdkOptions {
+    final o = _config['android_sdk_options'] as Map? ?? {};
+    return {
+      'old_platforms': o['old_platforms'] as bool? ?? true,
+      'old_build_tools': o['old_build_tools'] as bool? ?? true,
+      'system_images': o['system_images'] as bool? ?? true,
+      'emulator': o['emulator'] as bool? ?? true,
+    };
+  }
+
+  void updateAndroidSdkOption(String key, bool value) {
+    final opts = Map<String, dynamic>.from(
+        _config['android_sdk_options'] as Map? ?? {});
+    opts[key] = value;
+    _config =
+        Map<String, dynamic>.from(_config)..['android_sdk_options'] = opts;
+    notifyListeners();
+  }
+
   Future<void> saveToFile() async {
     await save(_config);
   }

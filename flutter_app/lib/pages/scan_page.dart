@@ -9,14 +9,6 @@ import '../models/rpc_types.dart';
 import '../providers/config_provider.dart';
 import '../providers/scan_provider.dart';
 
-typedef _Def = ({
-  String key,
-  String name,
-  String sub,
-  IconData icon,
-  Color color
-});
-
 // ── Data model for language groups ────────────────────────────────────────────
 
 typedef _GroupChild = ({
@@ -121,14 +113,6 @@ final List<_Group> _kGroups = [
   ),
 ];
 
-// Standalone simple rows — 2-col grid, Switch only (no children).
-const List<_Def> _kStandaloneItems = [
-  (key: 'android_sdk',   name: 'Android SDK',   sub: 'Old SDK components',         icon: Icons.android,              color: Color(0xFF3DDC84)),
-  (key: 'ide_cache',     name: 'IDE Caches',    sub: 'JetBrains / VS Code',        icon: Icons.developer_mode,       color: Color(0xFFE91E8C)),
-  (key: 'browser_cache', name: 'Browser Cache', sub: 'Chrome / Edge / Firefox',    icon: Icons.public,               color: Color(0xFF1A73E8)),
-  (key: 'dump_files',    name: 'Dump Files',    sub: 'Crash logs & WER reports',   icon: Icons.warning_amber_rounded, color: Color(0xFF6D4C41)),
-];
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 bool _groupAnyEnabled(ConfigProvider config, _Group group) {
@@ -178,6 +162,7 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> {
   bool _scannersExpanded = true;
   bool _resultsExpanded  = true;
+  double _splitRatio = 0.38;
   final _searchCtrl = TextEditingController();
   Timer? _configSaveTimer;
   final Set<String> _expanded = {};
@@ -228,12 +213,13 @@ class _ScanPageState extends State<ScanPage> {
                     Expanded(child: scannerPanel)
                   else
                     SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.40,
-                      child: scannerPanel,
+                      height: MediaQuery.of(context).size.height * _splitRatio,
+                      child: SingleChildScrollView(child: _buildScannerPanel(context, config)),
                     ),
                 ] else if (!hasContent)
                   Expanded(child: _buildIdleState(context, config)),
                 if (hasContent) ...[
+                  _buildResizeDivider(context),
                   _buildResultsHeader(context, scan),
                   if (_resultsExpanded) Expanded(child: _buildResultsContent(context, scan)),
                 ],
@@ -316,6 +302,41 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 
+  // ── Resize divider ────────────────────────────────────────────────────────
+
+  Widget _buildResizeDivider(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeRow,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragUpdate: (d) {
+          setState(() {
+            final h = MediaQuery.of(context).size.height;
+            _splitRatio = (_splitRatio + d.delta.dy / h).clamp(0.15, 0.70);
+          });
+        },
+        child: Container(
+          height: 6,
+          color: isDark
+              ? const Color(0xFF0A1220)
+              : theme.colorScheme.surfaceContainerHighest,
+          child: Center(
+            child: Container(
+              width: 36,
+              height: 3,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── Scanner panel ─────────────────────────────────────────────────────────
 
   Widget _buildScannerPanel(BuildContext context, ConfigProvider config) {
@@ -329,8 +350,8 @@ class _ScanPageState extends State<ScanPage> {
         children: [
           // Language groups
           for (final group in _kGroups) _buildLanguageGroup(context, config, group),
-          // Standalone simple 2-col grid
-          _buildStandaloneGrid(context, config),
+          // Standalone expandable list
+          _buildStandaloneList(context, config),
           // Expandable: Env Vars
           _buildExpandableScanner(
             context: context, config: config,
@@ -468,29 +489,113 @@ class _ScanPageState extends State<ScanPage> {
     ]);
   }
 
-  // ── Standalone 2-col grid ─────────────────────────────────────────────────
+  // ── Standalone expandable list ────────────────────────────────────────────
 
-  Widget _buildStandaloneGrid(BuildContext context, ConfigProvider config) {
-    return LayoutBuilder(builder: (ctx, constraints) {
-      final cols = constraints.maxWidth > 960 ? 4 : constraints.maxWidth > 640 ? 3 : 2;
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: cols, mainAxisExtent: 44, mainAxisSpacing: 1, crossAxisSpacing: 1,
-        ),
-        itemCount: _kStandaloneItems.length,
-        itemBuilder: (_, i) {
-          final s       = _kStandaloneItems[i];
-          final enabled = config.scanners[s.key] ?? false;
-          return _ScannerRow(
-            def: s, enabled: enabled,
-            onToggle: (v) { config.updateScanner(s.key, v); _scheduleConfigSave(config); },
-          );
-        },
+  Widget _buildStandaloneList(BuildContext context, ConfigProvider config) {
+    return Column(children: [
+      _buildExpandableScanner(
+        context: context, config: config,
+        scannerKey: 'android_sdk',
+        name: 'Android SDK', sub: 'Old SDK components',
+        icon: Icons.android, color: const Color(0xFF3DDC84),
+        expandKey: '_android_sdk',
+        children: _buildAndroidSdkChildren(context, config),
+      ),
+      _buildExpandableScanner(
+        context: context, config: config,
+        scannerKey: 'ide_cache',
+        name: 'IDE Caches', sub: 'JetBrains / VS Code',
+        icon: Icons.developer_mode, color: const Color(0xFFE91E8C),
+        expandKey: '_ide_cache',
+        children: _buildIdeCacheChildren(context, config),
+      ),
+      _buildExpandableScanner(
+        context: context, config: config,
+        scannerKey: 'browser_cache',
+        name: 'Browser Cache', sub: 'Chrome / Edge / Firefox',
+        icon: Icons.public, color: const Color(0xFF1A73E8),
+        expandKey: '_browser_cache',
+        children: _buildBrowserCacheChildren(context, config),
+      ),
+      _buildExpandableScanner(
+        context: context, config: config,
+        scannerKey: 'dump_files',
+        name: 'Dump Files', sub: 'Crash logs & WER reports',
+        icon: Icons.warning_amber_rounded, color: const Color(0xFF6D4C41),
+        expandKey: '_dump_files',
+        children: _buildDumpFilesChildren(context, config),
+      ),
+    ]);
+  }
+
+  List<Widget> _buildAndroidSdkChildren(BuildContext context, ConfigProvider config) {
+    final opts = config.androidSdkOptions;
+    const items = [
+      ('old_platforms',   'Platforms',     r'%LOCALAPPDATA%\Android\Sdk\platforms'),
+      ('old_build_tools', 'Build Tools',   r'%LOCALAPPDATA%\Android\Sdk\build-tools'),
+      ('system_images',   'System Images', r'%LOCALAPPDATA%\Android\Sdk\system-images'),
+      ('emulator',        'Emulator',      r'%LOCALAPPDATA%\Android\Sdk\emulator'),
+    ];
+    return [_SubGrid(children: items.map((item) {
+      final (key, label, desc) = item;
+      return _SubCheckbox(
+        label: label, description: desc, value: opts[key] ?? true,
+        onChanged: (v) { config.updateAndroidSdkOption(key, v); _scheduleConfigSave(config); },
       );
-    });
+    }).toList())];
+  }
+
+  List<Widget> _buildIdeCacheChildren(BuildContext context, ConfigProvider config) {
+    final opts = config.ideCacheOptions;
+    return [_SubGrid(children: [
+      _SubCheckbox(
+        label: 'JetBrains', description: r'%APPDATA%\JetBrains  (IntelliJ / Rider / CLion…)',
+        value: opts['jetbrains'] ?? true,
+        onChanged: (v) { config.updateIdeCacheOption('jetbrains', v); _scheduleConfigSave(config); },
+      ),
+      _SubCheckbox(
+        label: 'VS Code / Cursor', description: r'%APPDATA%\Code  %APPDATA%\Cursor',
+        value: opts['vscode'] ?? true,
+        onChanged: (v) { config.updateIdeCacheOption('vscode', v); _scheduleConfigSave(config); },
+      ),
+    ])];
+  }
+
+  List<Widget> _buildBrowserCacheChildren(BuildContext context, ConfigProvider config) {
+    final opts = config.browserCacheOptions;
+    const items = [
+      ('chrome',  'Chrome',  r'%LOCALAPPDATA%\Google\Chrome\User Data'),
+      ('edge',    'Edge',    r'%LOCALAPPDATA%\Microsoft\Edge\User Data'),
+      ('firefox', 'Firefox', r'%APPDATA%\Mozilla\Firefox\Profiles'),
+    ];
+    return [_SubGrid(children: items.map((item) {
+      final (key, label, desc) = item;
+      return _SubCheckbox(
+        label: label, description: desc, value: opts[key] ?? true,
+        onChanged: (v) { config.updateBrowserCacheOption(key, v); _scheduleConfigSave(config); },
+      );
+    }).toList())];
+  }
+
+  List<Widget> _buildDumpFilesChildren(BuildContext context, ConfigProvider config) {
+    final opts = config.dumpFilesOptions;
+    return [_SubGrid(children: [
+      _SubCheckbox(
+        label: 'WER Reports', description: r'%LOCALAPPDATA%\Microsoft\Windows\WER',
+        value: opts['wer'] ?? true,
+        onChanged: (v) { config.updateDumpFilesOption('wer', v); _scheduleConfigSave(config); },
+      ),
+      _SubCheckbox(
+        label: 'Crash Dumps', description: r'%LOCALAPPDATA%\CrashDumps',
+        value: opts['crash_dumps'] ?? true,
+        onChanged: (v) { config.updateDumpFilesOption('crash_dumps', v); _scheduleConfigSave(config); },
+      ),
+      _SubCheckbox(
+        label: 'Minidumps', description: r'%TEMP%\*.dmp  WER minidump files',
+        value: opts['minidumps'] ?? true,
+        onChanged: (v) { config.updateDumpFilesOption('minidumps', v); _scheduleConfigSave(config); },
+      ),
+    ])];
   }
 
   // ── Generic expandable scanner row (for env_vars, windows_temp) ───────────
@@ -698,7 +803,6 @@ class _ScanPageState extends State<ScanPage> {
             ? const Color(0xFF0F1923)
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
         border: Border(
-          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.9), width: 1.5),
           bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
         ),
       ),
@@ -1570,65 +1674,6 @@ class _SmallTextBtn extends StatelessWidget {
         textStyle: const TextStyle(fontSize: 11),
       ),
       child: Text(label),
-    );
-  }
-}
-
-class _ScannerRow extends StatelessWidget {
-  final _Def def;
-  final bool enabled;
-  final ValueChanged<bool> onToggle;
-  const _ScannerRow({required this.def, required this.enabled, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme  = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: () => onToggle(!enabled),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        color: enabled
-            ? (isDark ? def.color.withValues(alpha: 0.08) : def.color.withValues(alpha: 0.05))
-            : Colors.transparent,
-        child: Row(children: [
-          Container(
-            width: 26, height: 26,
-            decoration: BoxDecoration(
-              color: enabled ? def.color : def.color.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Icon(def.icon, size: 14,
-                color: enabled ? Colors.white : Colors.white.withValues(alpha: 0.55)),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(def.name, style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600, fontSize: 12,
-                color: enabled
-                    ? theme.colorScheme.onSurface
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.40),
-              ), overflow: TextOverflow.ellipsis),
-              Text(def.sub, style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 10,
-                color: theme.colorScheme.onSurfaceVariant
-                    .withValues(alpha: enabled ? 0.7 : 0.35),
-              ), overflow: TextOverflow.ellipsis),
-            ],
-          )),
-          Transform.scale(
-            scale: 0.75,
-            child: Switch(
-              value: enabled, onChanged: onToggle,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-        ]),
-      ),
     );
   }
 }

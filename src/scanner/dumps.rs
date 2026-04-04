@@ -4,40 +4,43 @@ use std::path::{Path, PathBuf};
 
 const SCANNER_NAME: &str = "Dump Files";
 
-pub fn scan(
-    _config: &Config,
-    _abort: &std::sync::Arc<std::sync::atomic::AtomicBool>,
-) -> ScanResult {
+pub fn scan(config: &Config, _abort: &std::sync::Arc<std::sync::atomic::AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new(SCANNER_NAME);
 
     // %LOCALAPPDATA%\CrashDumps\
-    if let Some(local) = dirs::data_local_dir() {
-        scan_dir_for_dmp(&local.join("CrashDumps"), "App crash dump", &mut result);
+    if config.dump_files_options.crash_dumps {
+        if let Some(local) = dirs::data_local_dir() {
+            scan_dir_for_dmp(&local.join("CrashDumps"), "App crash dump", &mut result);
+        }
     }
 
     // %WINDIR%\Minidump\
-    if let Ok(windir) = std::env::var("WINDIR") {
-        let windir = PathBuf::from(windir);
+    if config.dump_files_options.minidumps {
+        if let Ok(windir) = std::env::var("WINDIR") {
+            let windir = PathBuf::from(windir);
 
-        scan_dir_for_dmp(&windir.join("Minidump"), "BSOD minidump", &mut result);
+            scan_dir_for_dmp(&windir.join("Minidump"), "BSOD minidump", &mut result);
 
-        // %WINDIR%\MEMORY.DMP — single file
-        let memory_dmp = windir.join("MEMORY.DMP");
-        add_file_if_exists(&memory_dmp, "Full memory dump (BSOD)", &mut result);
+            // %WINDIR%\MEMORY.DMP — single file
+            let memory_dmp = windir.join("MEMORY.DMP");
+            add_file_if_exists(&memory_dmp, "Full memory dump (BSOD)", &mut result);
 
-        // %WINDIR%\LiveKernelReports\ — subdirs containing *.dmp
-        scan_live_kernel_reports(&windir.join("LiveKernelReports"), &mut result);
-    }
+            // %WINDIR%\LiveKernelReports\ — subdirs containing *.dmp
+            scan_live_kernel_reports(&windir.join("LiveKernelReports"), &mut result);
+        }
 
-    // %TEMP%\*.dmp (top-level only, no subdirs)
-    if let Ok(temp) = std::env::var("TEMP") {
-        scan_temp_dmp(&PathBuf::from(temp), &mut result);
+        // %TEMP%\*.dmp (top-level only, no subdirs)
+        if let Ok(temp) = std::env::var("TEMP") {
+            scan_temp_dmp(&PathBuf::from(temp), &mut result);
+        }
     }
 
     // WER report directories
-    let wer_dirs: Vec<(PathBuf, &str)> = collect_wer_dirs();
-    for (dir, description) in &wer_dirs {
-        scan_wer_dir(dir, description, &mut result);
+    if config.dump_files_options.wer {
+        let wer_dirs: Vec<(PathBuf, &str)> = collect_wer_dirs();
+        for (dir, description) in &wer_dirs {
+            scan_wer_dir(dir, description, &mut result);
+        }
     }
 
     result

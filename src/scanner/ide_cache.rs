@@ -6,64 +6,68 @@ use std::sync::Arc;
 
 const VSCODE_ROAMING_DIRS: &[&str] = &["Code", "Cursor", "Windsurf", "trae-cn", "lingma"];
 
-pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
+pub fn scan(config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("IDE Caches");
 
     // VS Code family — Roaming AppData
-    if let Some(roaming) = dirs::config_dir() {
-        for ide_name in VSCODE_ROAMING_DIRS {
-            let ide_dir = roaming.join(ide_name);
-            if !ide_dir.exists() {
-                continue;
+    if config.ide_cache_options.vscode {
+        if let Some(roaming) = dirs::config_dir() {
+            for ide_name in VSCODE_ROAMING_DIRS {
+                let ide_dir = roaming.join(ide_name);
+                if !ide_dir.exists() {
+                    continue;
+                }
+                scan_dir_as_cache(
+                    &ide_dir.join("logs"),
+                    &format!("{} logs", ide_name),
+                    &mut result,
+                    abort,
+                );
+                scan_dir_as_cache(
+                    &ide_dir.join("CachedExtensionVSIXs"),
+                    &format!("{} cached extension installers", ide_name),
+                    &mut result,
+                    abort,
+                );
+                scan_dir_as_cache(
+                    &ide_dir.join("User").join("workspaceStorage"),
+                    &format!("{} workspace storage", ide_name),
+                    &mut result,
+                    abort,
+                );
             }
-            scan_dir_as_cache(
-                &ide_dir.join("logs"),
-                &format!("{} logs", ide_name),
-                &mut result,
-                abort,
-            );
-            scan_dir_as_cache(
-                &ide_dir.join("CachedExtensionVSIXs"),
-                &format!("{} cached extension installers", ide_name),
-                &mut result,
-                abort,
-            );
-            scan_dir_as_cache(
-                &ide_dir.join("User").join("workspaceStorage"),
-                &format!("{} workspace storage", ide_name),
-                &mut result,
-                abort,
-            );
         }
-    }
 
-    // VS Code family — Local AppData
-    if let Some(local) = dirs::data_local_dir() {
-        for ide_name in VSCODE_ROAMING_DIRS {
-            let ide_dir = local.join(ide_name);
-            if !ide_dir.exists() {
-                continue;
+        // VS Code family — Local AppData
+        if let Some(local) = dirs::data_local_dir() {
+            for ide_name in VSCODE_ROAMING_DIRS {
+                let ide_dir = local.join(ide_name);
+                if !ide_dir.exists() {
+                    continue;
+                }
+                scan_dir_as_cache(
+                    &ide_dir.join("logs"),
+                    &format!("{} logs (local)", ide_name),
+                    &mut result,
+                    abort,
+                );
+                scan_dir_as_cache(
+                    &ide_dir.join("CachedData"),
+                    &format!("{} cached language server data", ide_name),
+                    &mut result,
+                    abort,
+                );
             }
-            scan_dir_as_cache(
-                &ide_dir.join("logs"),
-                &format!("{} logs (local)", ide_name),
-                &mut result,
-                abort,
-            );
-            scan_dir_as_cache(
-                &ide_dir.join("CachedData"),
-                &format!("{} cached language server data", ide_name),
-                &mut result,
-                abort,
-            );
         }
     }
 
     // JetBrains — Local AppData
-    if let Some(local) = dirs::data_local_dir() {
-        let jb_root = local.join("JetBrains");
-        if jb_root.exists() {
-            scan_jetbrains(&jb_root, &mut result, abort);
+    if config.ide_cache_options.jetbrains {
+        if let Some(local) = dirs::data_local_dir() {
+            let jb_root = local.join("JetBrains");
+            if jb_root.exists() {
+                scan_jetbrains(&jb_root, &mut result, abort);
+            }
         }
     }
 

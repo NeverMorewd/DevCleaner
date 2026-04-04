@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
+pub fn scan(config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Browser Caches");
 
     let local = match dirs::data_local_dir() {
@@ -17,27 +17,33 @@ pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     };
 
     // Chrome
-    let chrome_user_data = local.join("Google").join("Chrome").join("User Data");
-    scan_chromium_profiles(&chrome_user_data, "Chrome", &mut result, abort);
+    if config.browser_cache_options.chrome {
+        let chrome_user_data = local.join("Google").join("Chrome").join("User Data");
+        scan_chromium_profiles(&chrome_user_data, "Chrome", &mut result, abort);
+
+        // Brave (Chromium-based, grouped with Chrome option)
+        let brave_user_data = local
+            .join("BraveSoftware")
+            .join("Brave-Browser")
+            .join("User Data");
+        scan_chromium_profiles(&brave_user_data, "Brave", &mut result, abort);
+    }
 
     // Edge
-    let edge_user_data = local.join("Microsoft").join("Edge").join("User Data");
-    scan_chromium_profiles(&edge_user_data, "Edge", &mut result, abort);
+    if config.browser_cache_options.edge {
+        let edge_user_data = local.join("Microsoft").join("Edge").join("User Data");
+        scan_chromium_profiles(&edge_user_data, "Edge", &mut result, abort);
 
-    // Brave
-    let brave_user_data = local
-        .join("BraveSoftware")
-        .join("Brave-Browser")
-        .join("User Data");
-    scan_chromium_profiles(&brave_user_data, "Brave", &mut result, abort);
+        // Opera (grouped with Edge as another Chromium browser)
+        let opera_dir = roaming.join("Opera Software").join("Opera Stable");
+        scan_dir_as_cache(&opera_dir.join("Cache"), "Opera Cache", &mut result, abort);
+    }
 
     // Firefox
-    let firefox_profiles = local.join("Mozilla").join("Firefox").join("Profiles");
-    scan_firefox_profiles(&firefox_profiles, &mut result, abort);
-
-    // Opera
-    let opera_dir = roaming.join("Opera Software").join("Opera Stable");
-    scan_dir_as_cache(&opera_dir.join("Cache"), "Opera Cache", &mut result, abort);
+    if config.browser_cache_options.firefox {
+        let firefox_profiles = local.join("Mozilla").join("Firefox").join("Profiles");
+        scan_firefox_profiles(&firefox_profiles, &mut result, abort);
+    }
 
     result
 }
