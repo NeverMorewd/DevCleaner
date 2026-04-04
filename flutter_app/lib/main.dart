@@ -140,7 +140,10 @@ class AppShell extends StatelessWidget {
             child: Stack(
               children: [
                 const ScanPage(),
-                if (scan.state == ScanState.scanning)
+                // Show overlay only while no items have arrived yet.
+                // Once the first scanner result streams in, dismiss the overlay
+                // so the user can watch items appear one by one.
+                if (scan.state == ScanState.scanning && scan.totalCount == 0)
                   ScanOverlay(scan: scan),
               ],
             ),

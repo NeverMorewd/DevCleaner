@@ -10,6 +10,8 @@ class DaemonService extends ChangeNotifier {
   final _pending = <int, Completer<Map<String, dynamic>>>{};
   final _scanProgressController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final _scanItemsController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _deleteProgressController =
       StreamController<Map<String, dynamic>>.broadcast();
 
@@ -17,6 +19,8 @@ class DaemonService extends ChangeNotifier {
 
   Stream<Map<String, dynamic>> get scanProgress =>
       _scanProgressController.stream;
+  /// Emitted once per scanner as soon as that scanner finishes.
+  Stream<Map<String, dynamic>> get scanItems => _scanItemsController.stream;
   Stream<Map<String, dynamic>> get deleteProgress =>
       _deleteProgressController.stream;
 
@@ -57,6 +61,7 @@ class DaemonService extends ChangeNotifier {
       final method = msg['method'] as String?;
       final params = msg['params'] as Map<String, dynamic>? ?? {};
       if (method == 'scan_progress') _scanProgressController.add(params);
+      if (method == 'scan_items')    _scanItemsController.add(params);
       if (method == 'delete_progress') _deleteProgressController.add(params);
       return;
     }
@@ -158,6 +163,7 @@ class DaemonService extends ChangeNotifier {
   void dispose() {
     _process?.kill();
     _scanProgressController.close();
+    _scanItemsController.close();
     _deleteProgressController.close();
     super.dispose();
   }

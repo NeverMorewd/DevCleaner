@@ -22,11 +22,17 @@ use std::sync::Arc;
 use crate::config::Config;
 use crate::types::ScanResult;
 
+/// Run all enabled scanners.
+///
+/// * `on_start`  — called with the scanner label just before it runs.
+/// * `on_result` — called with the completed `ScanResult` immediately after
+///                 each scanner finishes so callers can stream results to the UI.
 pub fn run_all_scanners(
     config: &Config,
-    mut progress: impl FnMut(&str),
+    mut on_start: impl FnMut(&str),
+    mut on_result: impl FnMut(ScanResult),
     abort: &Arc<AtomicBool>,
-) -> Vec<ScanResult> {
+) {
     // Compile whitelist regexes once up front
     let whitelist_regexes: Vec<regex::Regex> = config
         .filter
@@ -35,15 +41,13 @@ pub fn run_all_scanners(
         .filter_map(|p| regex::Regex::new(p).ok())
         .collect();
 
-    let mut results = Vec::new();
-
     macro_rules! maybe_scan {
         ($enabled:expr, $scanner:expr, $label:expr) => {
             if $enabled {
                 if abort.load(Ordering::Relaxed) {
-                    return results;
+                    return;
                 }
-                progress($label);
+                on_start($label);
                 let mut result = $scanner;
                 // Apply whitelist filter
                 if !whitelist_regexes.is_empty() {
@@ -53,7 +57,7 @@ pub fn run_all_scanners(
                     });
                     result.total_size = result.items.iter().map(|i| i.size).sum();
                 }
-                results.push(result);
+                on_result(result);
             }
         };
     }
@@ -132,6 +136,4 @@ pub fn run_all_scanners(
         flutter_pub::scan(config, abort),
         "Flutter/Dart Pub"
     );
-
-    results
 }

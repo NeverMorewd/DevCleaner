@@ -167,34 +167,6 @@ class _ScanPageState extends State<ScanPage> {
   Timer? _configSaveTimer;
   final Set<String> _expanded = {};
 
-  // ── Scan elapsed timer ────────────────────────────────────────────────────
-  DateTime? _scanStart;
-  Timer?    _elapsedTimer;
-  int       _elapsedSecs = 0;
-
-  void _startElapsedTimer() {
-    _elapsedTimer?.cancel();
-    _scanStart   = DateTime.now();
-    _elapsedSecs = 0;
-    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() {
-        _elapsedSecs = DateTime.now().difference(_scanStart!).inSeconds;
-      });
-    });
-  }
-
-  void _stopElapsedTimer() {
-    _elapsedTimer?.cancel();
-    _elapsedTimer = null;
-  }
-
-  String _formatElapsed(int secs) {
-    final m = secs ~/ 60;
-    final s = secs % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-  // ─────────────────────────────────────────────────────────────────────────
-
   void _toggleExpand(String key) => setState(() =>
       _expanded.contains(key) ? _expanded.remove(key) : _expanded.add(key));
 
@@ -208,7 +180,6 @@ class _ScanPageState extends State<ScanPage> {
   @override
   void dispose() {
     _configSaveTimer?.cancel();
-    _elapsedTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -217,11 +188,10 @@ class _ScanPageState extends State<ScanPage> {
   Widget build(BuildContext context) {
     return Consumer2<ScanProvider, ConfigProvider>(
       builder: (context, scan, config, _) {
-        final hasContent = scan.state == ScanState.done || scan.state == ScanState.error;
-        // Stop the elapsed timer as soon as scanning finishes
-        if (scan.state != ScanState.scanning && _elapsedTimer != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _stopElapsedTimer());
-        }
+        // Show results panel as soon as items start arriving (even during scan)
+        final hasContent = scan.state == ScanState.done ||
+            scan.state == ScanState.error ||
+            (scan.state == ScanState.scanning && scan.totalCount > 0);
         final scannerPanel = SingleChildScrollView(
           child: _buildScannerPanel(context, config),
         );
@@ -231,7 +201,6 @@ class _ScanPageState extends State<ScanPage> {
             const SingleActivator(LogicalKeyboardKey.f5): () {
               if (scan.state != ScanState.scanning) {
                 scan.startScan();
-                _startElapsedTimer();
                 setState(() { _scannersExpanded = false; _resultsExpanded = true; });
               }
             },
@@ -320,7 +289,7 @@ class _ScanPageState extends State<ScanPage> {
             ],
             const SizedBox(width: 10),
             Text(
-              _formatElapsed(_elapsedSecs),
+              scan.elapsedFormatted,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 fontFamily: 'monospace',
@@ -333,13 +302,19 @@ class _ScanPageState extends State<ScanPage> {
                 style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary)),
             const SizedBox(width: 12),
           ],
+          if (isScanning)
+            _ActionBtn(
+              label: 'Cancel',
+              icon: Icons.stop_circle_outlined,
+              color: theme.colorScheme.error,
+              onTap: () => scan.abortScan(),
+            ),
           if (!isScanning)
             _ActionBtn(
               label: 'Start Scan',
               icon: Icons.search,
               onTap: () {
                 scan.startScan();
-                _startElapsedTimer();
                 setState(() { _scannersExpanded = false; _resultsExpanded = true; });
               },
             ),
@@ -1686,7 +1661,8 @@ class _ActionBtn extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  const _ActionBtn({required this.label, required this.icon, required this.onTap});
+  final Color? color;
+  const _ActionBtn({required this.label, required this.icon, required this.onTap, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1698,6 +1674,7 @@ class _ActionBtn extends StatelessWidget {
         icon: Icon(icon, size: 13),
         label: Text(label),
         style: FilledButton.styleFrom(
+          backgroundColor: color,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           textStyle: theme.textTheme.labelMedium,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),

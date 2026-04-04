@@ -62,9 +62,23 @@ class ScanProvider extends ChangeNotifier {
   List<DeleteError> _lastDeleteErrors = [];
 
   StreamSubscription<Map<String, dynamic>>? _scanProgressSub;
+  StreamSubscription<Map<String, dynamic>>? _scanItemsSub;
+
+  // ── Elapsed time tracking ────────────────────────────────────────────────
+  final Stopwatch _scanWatch = Stopwatch();
+  Timer? _elapsedTicker;
+
+  /// Seconds elapsed since the current/last scan started.
+  int get elapsedSeconds => _scanWatch.elapsed.inSeconds;
+
+  String get elapsedFormatted {
+    final s = elapsedSeconds;
+    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+  }
 
   ScanProvider(this._daemon) {
     _scanProgressSub = _daemon.scanProgress.listen(_onScanProgress);
+    _scanItemsSub    = _daemon.scanItems.listen(_onScanItems);
   }
 
   ScanState get state => _state;
@@ -161,6 +175,16 @@ class ScanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Called for each scanner that completes — appends items to results in real-time.
+  void _onScanItems(Map<String, dynamic> params) {
+    if (_state != ScanState.scanning) return;
+    final group = ScanResultGroup.fromJson(params);
+    if (group.items.isNotEmpty) {
+      _groups.add(group);
+      notifyListeners();
+    }
+  }
+
   Future<void> startScan() async {
     _state = ScanState.scanning;
     _groups = [];
@@ -168,26 +192,39 @@ class ScanProvider extends ChangeNotifier {
     _scannersDone = 0;
     _scannersTotal = 0;
     _progress = '';
+    // Start elapsed timer
+    _scanWatch.reset();
+    _scanWatch.start();
+    _elapsedTicker?.cancel();
+    _elapsedTicker = Timer.periodic(const Duration(seconds: 1), (_) => notifyListeners());
     notifyListeners();
 
     try {
       final resp = await _daemon.startScan();
       if (resp.containsKey('error') && resp['error'] != null) {
         final err = resp['error'] as Map<String, dynamic>;
-        _error = err['message'] as String?;
-        _state = ScanState.error;
+        // Treat abort with partial results as done rather than error
+        final code = (err['code'] as num?)?.toInt();
+        if (code == 4 /* SCAN_ABORTED */ && _groups.isNotEmpty) {
+          _scanId = null;
+          _state = ScanState.done;
+        } else {
+          _error = err['message'] as String?;
+          _state = ScanState.error;
+        }
       } else {
         final result = resp['result'] as Map<String, dynamic>? ?? {};
         _scanId = result['scan_id'] as String?;
-        _groups = (result['results'] as List<dynamic>? ?? [])
-            .map((e) => ScanResultGroup.fromJson(e as Map<String, dynamic>))
-            .toList();
+        // Items were already streamed via _onScanItems; no parsing needed here.
         _state = ScanState.done;
       }
     } catch (e) {
       _error = e.toString();
       _state = ScanState.error;
     }
+    _scanWatch.stop();
+    _elapsedTicker?.cancel();
+    _elapsedTicker = null;
     notifyListeners();
   }
 
@@ -247,6 +284,8 @@ class ScanProvider extends ChangeNotifier {
   @override
   void dispose() {
     _scanProgressSub?.cancel();
+    _scanItemsSub?.cancel();
+    _elapsedTicker?.cancel();
     super.dispose();
   }
 }

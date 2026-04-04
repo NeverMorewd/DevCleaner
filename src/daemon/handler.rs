@@ -175,8 +175,13 @@ fn handle_start_scan(
         .count() as u32;
 
         let mut done: u32 = 0;
+        let mut all_results: Vec<crate::types::ScanResult> = Vec::new();
+        let mut grand_total_size: u64 = 0;
+        let mut grand_total_items: usize = 0;
+        // A separate Arc clone for the on_result closure (on_start owns stdout_clone)
+        let stdout_items = Arc::clone(&stdout_clone);
 
-        let results = scanner::run_all_scanners(
+        scanner::run_all_scanners(
             &config,
             |scanner_name| {
                 done += 1;
@@ -192,12 +197,28 @@ fn handle_start_scan(
                 let _ = writeln!(out, "{}", serde_json::to_string(&notif).unwrap_or_default());
                 let _ = out.flush();
             },
+            |result| {
+                // Stream this scanner's results to the Flutter UI immediately
+                let notif = RpcNotification::new(
+                    "scan_items",
+                    json!({
+                        "scanner_name": &result.scanner_name,
+                        "items": serde_json::to_value(&result.items).unwrap_or(Value::Null),
+                        "total_size": result.total_size,
+                        "error": result.error,
+                    }),
+                );
+                let mut out = stdout_items.lock().unwrap();
+                let _ = writeln!(out, "{}", serde_json::to_string(&notif).unwrap_or_default());
+                let _ = out.flush();
+                drop(out);
+
+                grand_total_size += result.total_size;
+                grand_total_items += result.items.len();
+                all_results.push(result);
+            },
             &abort,
         );
-
-        // Calculate totals
-        let grand_total_size: u64 = results.iter().map(|r| r.total_size).sum();
-        let grand_total_items: usize = results.iter().map(|r| r.items.len()).sum();
 
         // Generate scan_id
         let scan_id = format!(
@@ -208,21 +229,11 @@ fn handle_start_scan(
                 .subsec_nanos()
         );
 
-        // Store results
+        // Store results in daemon state for later delete operations
         {
             let mut st = state_clone.lock().unwrap();
             st.scan_id = Some(scan_id.clone());
-            st.last_results = Some(
-                results
-                    .iter()
-                    .map(|r| crate::types::ScanResult {
-                        scanner_name: r.scanner_name.clone(),
-                        items: r.items.clone(),
-                        total_size: r.total_size,
-                        error: r.error.clone(),
-                    })
-                    .collect(),
-            );
+            st.last_results = Some(all_results);
             st.scan_running = false;
         }
 
@@ -235,12 +246,12 @@ fn handle_start_scan(
             ))
             .unwrap()
         } else {
-            let results_val = serde_json::to_value(&results).unwrap_or(Value::Null);
+            // Items were already streamed via scan_items notifications;
+            // the final response only carries totals and the scan_id.
             serde_json::to_value(RpcResponse::ok(
                 id,
                 json!({
                     "scan_id": scan_id,
-                    "results": results_val,
                     "grand_total_size": grand_total_size,
                     "grand_total_items": grand_total_items,
                 }),

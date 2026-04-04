@@ -56,7 +56,7 @@ class ScanOverlay extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
 
-                    // Current scanner name
+                    // Current scanner name + elapsed time
                     ConstrainedBox(
                       constraints: const BoxConstraints(
                         minHeight: 20,
@@ -72,6 +72,15 @@ class ScanOverlay extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      scan.elapsedFormatted,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        fontFamily: 'monospace',
+                        letterSpacing: 1,
                       ),
                     ),
 
