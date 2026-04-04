@@ -1953,8 +1953,9 @@ class _WhitelistDialogState extends State<_WhitelistDialog> {
                     controller: _ctrl,
                     onSubmitted: (_) => _add(),
                     onChanged: (_) {
-                      if (_patternError != null)
+                      if (_patternError != null) {
                         setState(() => _patternError = null);
+                      }
                     },
                     decoration: InputDecoration(
                       hintText: r'C:\\Users\\you\\keep\\this',

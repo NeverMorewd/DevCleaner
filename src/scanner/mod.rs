@@ -26,7 +26,7 @@ use crate::types::ScanResult;
 ///
 /// * `on_start`  — called with the scanner label just before it runs.
 /// * `on_result` — called with the completed `ScanResult` immediately after
-///                 each scanner finishes so callers can stream results to the UI.
+///   each scanner finishes so callers can stream results to the UI.
 pub fn run_all_scanners(
     config: &Config,
     mut on_start: impl FnMut(&str),
