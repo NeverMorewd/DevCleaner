@@ -1104,11 +1104,18 @@ class _ScanPageState extends State<ScanPage> {
                 style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w700, letterSpacing: 0.3)),
             const SizedBox(width: 6),
-            if (isDone)
+            if (isDone && !scan.wasAborted)
               _Badge(
                 label:
                     '${scan.filteredItems.length} / ${scan.totalCount}  \u00b7  ${formatBytes(scan.totalSize)}',
                 color: theme.colorScheme.tertiary,
+              )
+            else if (isDone && scan.wasAborted)
+              _Badge(
+                label: scan.totalCount > 0
+                    ? 'Aborted  \u00b7  ${scan.totalCount} found'
+                    : 'Aborted',
+                color: Colors.orange,
               )
             else if (scan.state == ScanState.error)
               _Badge(label: 'Error', color: theme.colorScheme.error),

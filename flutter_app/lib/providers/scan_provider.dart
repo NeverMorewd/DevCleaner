@@ -50,6 +50,9 @@ class ScanProvider extends ChangeNotifier {
   int _scannersDone = 0;
   int _scannersTotal = 0;
   String? _error;
+  bool _wasAborted = false;
+  bool get wasAborted => _wasAborted;
+
   bool _isDeleting = false;
   int _deleteProgress = 0;
   int _deleteTotal = 0;
@@ -77,12 +80,12 @@ class ScanProvider extends ChangeNotifier {
   /// Seconds elapsed since the current/last scan started.
   int get elapsedSeconds => _scanWatch.elapsed.inSeconds;
 
-  /// Formatted elapsed time with tenths of a second, e.g. "1:23.4"
+  /// Formatted elapsed time with milliseconds, e.g. "1:23.456"
   String get elapsedFormatted {
     final elapsed = _scanWatch.elapsed;
     final s = elapsed.inSeconds;
-    final tenths = (elapsed.inMilliseconds % 1000) ~/ 100;
-    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}.$tenths';
+    final ms = (elapsed.inMilliseconds % 1000).toString().padLeft(3, '0');
+    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}.$ms';
   }
 
   ScanProvider(this._daemon) {
@@ -201,6 +204,7 @@ class ScanProvider extends ChangeNotifier {
     _groups = [];
     _seenPaths.clear();
     _error = null;
+    _wasAborted = false;
     _scannersDone = 0;
     _scannersTotal = 0;
     _progress = '';
@@ -215,9 +219,10 @@ class ScanProvider extends ChangeNotifier {
       final resp = await _daemon.startScan();
       if (resp.containsKey('error') && resp['error'] != null) {
         final err = resp['error'] as Map<String, dynamic>;
-        // Treat abort with partial results as done rather than error
         final code = (err['code'] as num?)?.toInt();
-        if (code == 4 /* SCAN_ABORTED */ && _groups.isNotEmpty) {
+        if (code == 4 /* SCAN_ABORTED */) {
+          // Always treat abort as done so partial results are kept.
+          _wasAborted = true;
           _scanId = null;
           _state = ScanState.done;
         } else {
