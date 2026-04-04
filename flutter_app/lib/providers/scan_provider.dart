@@ -220,7 +220,7 @@ class ScanProvider extends ChangeNotifier {
       if (resp.containsKey('error') && resp['error'] != null) {
         final err = resp['error'] as Map<String, dynamic>;
         final code = (err['code'] as num?)?.toInt();
-        if (code == 4 /* SCAN_ABORTED */) {
+        if (code == -32001 /* SCAN_ABORTED */) {
           // Always treat abort as done so partial results are kept.
           _wasAborted = true;
           _scanId = null;
