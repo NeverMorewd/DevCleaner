@@ -649,7 +649,7 @@ class _ScanPageState extends State<ScanPage> {
   void _showWhitelistDialog(BuildContext context, ConfigProvider config) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => _WhitelistDialog(config: config),
+      builder: (ctx) => _WhitelistDialog(config: config, dialogContext: ctx),
     );
   }
 

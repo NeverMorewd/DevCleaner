@@ -1,10 +1,12 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::{dir_size, old_versions};
+use crate::utils::old_versions;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Flutter/Dart Pub");
 
     let local = match dirs::data_local_dir() {
@@ -31,22 +33,26 @@ pub fn scan(_config: &Config) -> ScanResult {
         // hosted/pub.dev/PACKAGE-VERSION dirs — old versions
         let hosted_pub_dev = cache_root.join("hosted").join("pub.dev");
         if hosted_pub_dev.exists() {
-            scan_hosted_packages(&hosted_pub_dev, &mut result);
+            scan_hosted_packages(&hosted_pub_dev, &mut result, abort);
         }
 
         // hosted-hashes — report as Cache
         let hosted_hashes = cache_root.join("hosted-hashes");
-        add_cache_item(&hosted_hashes, "Dart pub hosted-hashes", &mut result);
+        add_cache_item(&hosted_hashes, "Dart pub hosted-hashes", &mut result, abort);
 
         // bin — compiled executables
         let bin = cache_root.join("bin");
-        add_cache_item(&bin, "Dart pub compiled executables", &mut result);
+        add_cache_item(&bin, "Dart pub compiled executables", &mut result, abort);
     }
 
     result
 }
 
-fn scan_hosted_packages(hosted_pub_dev: &PathBuf, result: &mut ScanResult) {
+fn scan_hosted_packages(
+    hosted_pub_dev: &PathBuf,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     let Ok(entries) = std::fs::read_dir(hosted_pub_dev) else {
         return;
     };
@@ -72,7 +78,7 @@ fn scan_hosted_packages(hosted_pub_dev: &PathBuf, result: &mut ScanResult) {
     for (pkg_name, versions) in packages {
         let old = old_versions(versions);
         for path in old {
-            let size = dir_size(&path);
+            let size = crate::utils::dir_size_abortable(&path, abort);
             let dir_name = path
                 .file_name()
                 .unwrap_or_default()
@@ -96,11 +102,16 @@ fn scan_hosted_packages(hosted_pub_dev: &PathBuf, result: &mut ScanResult) {
     }
 }
 
-fn add_cache_item(path: &Path, description: &str, result: &mut ScanResult) {
+fn add_cache_item(
+    path: &Path,
+    description: &str,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     if !path.exists() {
         return;
     }
-    let size = dir_size(path);
+    let size = crate::utils::dir_size_abortable(path, abort);
     if size > 0 {
         result.add_item(CleanItem {
             path: path.to_path_buf(),

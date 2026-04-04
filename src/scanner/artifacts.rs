@@ -1,7 +1,8 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::dir_size;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 /// Well-known developer root directories on Windows (auto-discovered).
 fn auto_dev_roots() -> Vec<PathBuf> {
@@ -54,7 +55,7 @@ fn auto_dev_roots() -> Vec<PathBuf> {
     roots
 }
 
-pub fn scan(config: &Config) -> ScanResult {
+pub fn scan(config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Build Artifacts");
 
     // Merge auto-discovered roots with user-configured roots, deduplicating
@@ -74,7 +75,10 @@ pub fn scan(config: &Config) -> ScanResult {
     }
 
     for root in &roots {
-        scan_dir(root, config, &mut result, 0);
+        if abort.load(Ordering::Relaxed) {
+            break;
+        }
+        scan_dir(root, config, &mut result, 0, abort);
     }
 
     result
@@ -82,8 +86,14 @@ pub fn scan(config: &Config) -> ScanResult {
 
 /// Recursively scan a directory for build artifact folders.
 /// `depth` is used to avoid scanning too deep and for skipping artifact-internal dirs.
-fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
-    if depth > 8 {
+fn scan_dir(
+    dir: &Path,
+    config: &Config,
+    result: &mut ScanResult,
+    depth: u32,
+    abort: &Arc<AtomicBool>,
+) {
+    if depth > 8 || abort.load(Ordering::Relaxed) {
         return;
     }
 
@@ -92,6 +102,9 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
     };
 
     for entry in entries.flatten() {
+        if abort.load(Ordering::Relaxed) {
+            return;
+        }
         let path = entry.path();
         if !path.is_dir() {
             continue;
@@ -109,13 +122,14 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 &format!(".NET build artifact ({})", name),
                 "C# / .NET",
                 result,
+                abort,
             );
             continue; // don't recurse inside
         }
 
         // ── Rust ─────────────────────────────────────────────────────────────
         if config.artifacts.scan_rust_target && name == "target" && has_file(parent, "Cargo.toml") {
-            add_artifact(&path, "Rust target/", "Rust", result);
+            add_artifact(&path, "Rust target/", "Rust", result, abort);
             continue;
         }
 
@@ -124,7 +138,7 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
             && name == "node_modules"
             && has_file(parent, "package.json")
         {
-            add_artifact(&path, "node_modules", "Node.js", result);
+            add_artifact(&path, "node_modules", "Node.js", result, abort);
             continue;
         }
 
@@ -135,7 +149,7 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 || has_file(parent, "next.config.ts")
                 || has_file(parent, "next.config.mjs"))
         {
-            add_artifact(&path, "Next.js .next/", "Next.js", result);
+            add_artifact(&path, "Next.js .next/", "Next.js", result, abort);
             continue;
         }
 
@@ -144,14 +158,14 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
             && name == ".nuxt"
             && (has_file(parent, "nuxt.config.ts") || has_file(parent, "nuxt.config.js"))
         {
-            add_artifact(&path, "Nuxt .nuxt/", "Nuxt", result);
+            add_artifact(&path, "Nuxt .nuxt/", "Nuxt", result, abort);
             continue;
         }
         if config.artifacts.scan_frontend_dist
             && name == ".output"
             && (has_file(parent, "nuxt.config.ts") || has_file(parent, "nuxt.config.js"))
         {
-            add_artifact(&path, "Nuxt .output/", "Nuxt", result);
+            add_artifact(&path, "Nuxt .output/", "Nuxt", result, abort);
             continue;
         }
 
@@ -160,20 +174,20 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
             && name == ".svelte-kit"
             && (has_file(parent, "svelte.config.js") || has_file(parent, "svelte.config.ts"))
         {
-            add_artifact(&path, "SvelteKit .svelte-kit/", "SvelteKit", result);
+            add_artifact(&path, "SvelteKit .svelte-kit/", "SvelteKit", result, abort);
             continue;
         }
 
         // ── Angular / Vite / generic dist ────────────────────────────────────
         if config.artifacts.scan_frontend_dist && name == "dist" && has_file(parent, "package.json")
         {
-            add_artifact(&path, "Frontend dist/", "JS/TS", result);
+            add_artifact(&path, "Frontend dist/", "JS/TS", result, abort);
             continue;
         }
 
         // ── Java / Maven ─────────────────────────────────────────────────────
         if config.artifacts.scan_java_build && name == "target" && has_file(parent, "pom.xml") {
-            add_artifact(&path, "Maven target/", "Java/Maven", result);
+            add_artifact(&path, "Maven target/", "Java/Maven", result, abort);
             continue;
         }
 
@@ -185,32 +199,32 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 || has_file(parent, "settings.gradle")
                 || has_file(parent, "settings.gradle.kts"))
         {
-            add_artifact(&path, "Gradle build/", "Java/Gradle", result);
+            add_artifact(&path, "Gradle build/", "Java/Gradle", result, abort);
             continue;
         }
         if config.artifacts.scan_java_build
             && name == ".gradle"
             && (has_file(parent, "build.gradle") || has_file(parent, "build.gradle.kts"))
         {
-            add_artifact(&path, "Gradle .gradle/", "Java/Gradle", result);
+            add_artifact(&path, "Gradle .gradle/", "Java/Gradle", result, abort);
             continue;
         }
 
         // ── Python ───────────────────────────────────────────────────────────
         if config.artifacts.scan_python_cache && name == "__pycache__" {
-            add_artifact(&path, "Python __pycache__/", "Python", result);
+            add_artifact(&path, "Python __pycache__/", "Python", result, abort);
             continue;
         }
         if config.artifacts.scan_python_cache && name == ".pytest_cache" {
-            add_artifact(&path, "pytest cache", "Python", result);
+            add_artifact(&path, "pytest cache", "Python", result, abort);
             continue;
         }
         if config.artifacts.scan_python_cache && name == ".mypy_cache" {
-            add_artifact(&path, "mypy cache", "Python", result);
+            add_artifact(&path, "mypy cache", "Python", result, abort);
             continue;
         }
         if config.artifacts.scan_python_cache && name == ".ruff_cache" {
-            add_artifact(&path, "ruff cache", "Python", result);
+            add_artifact(&path, "ruff cache", "Python", result, abort);
             continue;
         }
         if config.artifacts.scan_python_cache
@@ -224,6 +238,7 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 &format!("Python build artifact ({})", name),
                 "Python",
                 result,
+                abort,
             );
             continue;
         }
@@ -233,7 +248,7 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
 
         // ── CMake / C / C++ ──────────────────────────────────────────────────
         if config.artifacts.scan_cmake_build && name == "CMakeFiles" {
-            add_artifact(&path, "CMake build files", "C/C++", result);
+            add_artifact(&path, "CMake build files", "C/C++", result, abort);
             continue;
         }
         if config.artifacts.scan_cmake_build
@@ -250,6 +265,7 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 &format!("C/C++ build dir ({})", name),
                 "C/C++",
                 result,
+                abort,
             );
             continue;
         }
@@ -259,14 +275,20 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
             && name == "build"
             && has_file(parent, "pubspec.yaml")
         {
-            add_artifact(&path, "Flutter/Dart build/", "Flutter/Dart", result);
+            add_artifact(&path, "Flutter/Dart build/", "Flutter/Dart", result, abort);
             continue;
         }
         if config.artifacts.scan_flutter_build
             && name == ".dart_tool"
             && has_file(parent, "pubspec.yaml")
         {
-            add_artifact(&path, "Dart tool cache .dart_tool/", "Flutter/Dart", result);
+            add_artifact(
+                &path,
+                "Dart tool cache .dart_tool/",
+                "Flutter/Dart",
+                result,
+                abort,
+            );
             continue;
         }
 
@@ -277,13 +299,13 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
                 || has_file(parent, "build.gradle")
                 || has_file(parent, "build.gradle.kts"))
         {
-            add_artifact(&path, "Android build/", "Android", result);
+            add_artifact(&path, "Android build/", "Android", result, abort);
             continue;
         }
 
         // ── Go vendor ────────────────────────────────────────────────────────
         if config.artifacts.scan_go_vendor && name == "vendor" && has_file(parent, "go.mod") {
-            add_artifact(&path, "Go vendor/", "Go", result);
+            add_artifact(&path, "Go vendor/", "Go", result, abort);
             continue;
         }
 
@@ -298,12 +320,18 @@ fn scan_dir(dir: &Path, config: &Config, result: &mut ScanResult, depth: u32) {
         }
 
         // Recurse
-        scan_dir(&path, config, result, depth + 1);
+        scan_dir(&path, config, result, depth + 1, abort);
     }
 }
 
-fn add_artifact(path: &Path, description: &str, lang: &str, result: &mut ScanResult) {
-    let size = dir_size(path);
+fn add_artifact(
+    path: &Path,
+    description: &str,
+    lang: &str,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
+    let size = crate::utils::dir_size_abortable(path, abort);
     if size > 0 {
         result.add_item(CleanItem {
             path: path.to_path_buf(),

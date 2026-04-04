@@ -1,16 +1,20 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::dir_size;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Node.js");
 
     // npm cache locations
     let npm_caches = npm_cache_paths();
     for cache in npm_caches {
+        if abort.load(Ordering::Relaxed) {
+            break;
+        }
         if cache.exists() {
-            let size = dir_size(&cache);
+            let size = crate::utils::dir_size_abortable(&cache, abort);
             if size > 0 {
                 result.add_item(CleanItem {
                     path: cache,
@@ -28,40 +32,44 @@ pub fn scan(_config: &Config) -> ScanResult {
 
     // yarn v1 cache
     if let Some(local) = dirs::data_local_dir() {
-        let yarn_cache = local.join("Yarn").join("Cache");
-        if yarn_cache.exists() {
-            let size = dir_size(&yarn_cache);
-            if size > 0 {
-                result.add_item(CleanItem {
-                    path: yarn_cache,
-                    size,
-                    description: "Yarn v1 cache".to_string(),
-                    scanner: "Node.js".to_string(),
-                    item_type: CleanItemType::Cache,
-                    package_name: None,
-                    version: None,
-                    registry_info: None,
-                });
+        if !abort.load(Ordering::Relaxed) {
+            let yarn_cache = local.join("Yarn").join("Cache");
+            if yarn_cache.exists() {
+                let size = crate::utils::dir_size_abortable(&yarn_cache, abort);
+                if size > 0 {
+                    result.add_item(CleanItem {
+                        path: yarn_cache,
+                        size,
+                        description: "Yarn v1 cache".to_string(),
+                        scanner: "Node.js".to_string(),
+                        item_type: CleanItemType::Cache,
+                        package_name: None,
+                        version: None,
+                        registry_info: None,
+                    });
+                }
             }
         }
     }
 
     // pnpm store
     if let Some(local) = dirs::data_local_dir() {
-        let pnpm_store = local.join("pnpm").join("store");
-        if pnpm_store.exists() {
-            let size = dir_size(&pnpm_store);
-            if size > 0 {
-                result.add_item(CleanItem {
-                    path: pnpm_store,
-                    size,
-                    description: "pnpm store".to_string(),
-                    scanner: "Node.js".to_string(),
-                    item_type: CleanItemType::Cache,
-                    package_name: None,
-                    version: None,
-                    registry_info: None,
-                });
+        if !abort.load(Ordering::Relaxed) {
+            let pnpm_store = local.join("pnpm").join("store");
+            if pnpm_store.exists() {
+                let size = crate::utils::dir_size_abortable(&pnpm_store, abort);
+                if size > 0 {
+                    result.add_item(CleanItem {
+                        path: pnpm_store,
+                        size,
+                        description: "pnpm store".to_string(),
+                        scanner: "Node.js".to_string(),
+                        item_type: CleanItemType::Cache,
+                        package_name: None,
+                        version: None,
+                        registry_info: None,
+                    });
+                }
             }
         }
     }

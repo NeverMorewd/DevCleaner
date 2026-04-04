@@ -1,10 +1,11 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::{dir_size, old_versions};
+use crate::utils::old_versions;
 use regex::Regex;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock};
 
 /// Compiled once at first use; matches "name-1.2.3" or "name-1.2.3.crate"
 static CRATE_RE: OnceLock<Regex> = OnceLock::new();
@@ -13,7 +14,7 @@ fn crate_re() -> &'static Regex {
     CRATE_RE.get_or_init(|| Regex::new(r"^(.+)-(\d+\.\d+.*)$").expect("valid regex"))
 }
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Cargo");
 
     let Some(home) = dirs::home_dir() else {
@@ -26,13 +27,13 @@ pub fn scan(_config: &Config) -> ScanResult {
     // Registry cache: .crate files
     let registry_cache = cargo_home.join("registry").join("cache");
     if registry_cache.exists() {
-        scan_crate_files(&registry_cache, &mut result);
+        scan_crate_files(&registry_cache, &mut result, abort);
     }
 
     // Registry src: extracted sources
     let registry_src = cargo_home.join("registry").join("src");
     if registry_src.exists() {
-        scan_src_dirs(&registry_src, &mut result);
+        scan_src_dirs(&registry_src, &mut result, abort);
     }
 
     result
@@ -45,12 +46,19 @@ fn parse_crate_name_version(filename: &str) -> Option<(String, String)> {
     Some((caps[1].to_string(), caps[2].to_string()))
 }
 
-fn scan_crate_files(registry_cache: &std::path::Path, result: &mut ScanResult) {
+fn scan_crate_files(
+    registry_cache: &std::path::Path,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     let Ok(index_entries) = std::fs::read_dir(registry_cache) else {
         return;
     };
 
     for index_entry in index_entries.flatten() {
+        if abort.load(Ordering::Relaxed) {
+            return;
+        }
         let index_path = index_entry.path();
         if !index_path.is_dir() {
             continue;
@@ -95,7 +103,7 @@ fn scan_crate_files(registry_cache: &std::path::Path, result: &mut ScanResult) {
     }
 }
 
-fn scan_src_dirs(registry_src: &std::path::Path, result: &mut ScanResult) {
+fn scan_src_dirs(registry_src: &std::path::Path, result: &mut ScanResult, abort: &Arc<AtomicBool>) {
     let re = crate_re();
 
     let Ok(index_entries) = std::fs::read_dir(registry_src) else {
@@ -103,6 +111,9 @@ fn scan_src_dirs(registry_src: &std::path::Path, result: &mut ScanResult) {
     };
 
     for index_entry in index_entries.flatten() {
+        if abort.load(Ordering::Relaxed) {
+            return;
+        }
         let index_path = index_entry.path();
         if !index_path.is_dir() {
             continue;
@@ -128,7 +139,7 @@ fn scan_src_dirs(registry_src: &std::path::Path, result: &mut ScanResult) {
         for (pkg_name, versions) in by_name {
             let old = old_versions(versions);
             for path in old {
-                let size = dir_size(&path);
+                let size = crate::utils::dir_size_abortable(&path, abort);
                 let ver = path
                     .file_name()
                     .unwrap_or_default()

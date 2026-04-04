@@ -1,8 +1,10 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::{dir_size, old_versions};
+use crate::utils::old_versions;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Android SDK");
 
     let local = match dirs::data_local_dir() {
@@ -19,13 +21,13 @@ pub fn scan(_config: &Config) -> ScanResult {
     // build-tools: keep only newest
     let build_tools = sdk_root.join("build-tools");
     if build_tools.exists() {
-        scan_build_tools(&build_tools, &mut result);
+        scan_build_tools(&build_tools, &mut result, abort);
     }
 
     // platforms: android-NN dirs, keep newest 2
     let platforms = sdk_root.join("platforms");
     if platforms.exists() {
-        scan_platforms(&platforms, &mut result);
+        scan_platforms(&platforms, &mut result, abort);
     }
 
     // NOTE: system-images and AVDs are NOT scanned.
@@ -39,7 +41,7 @@ pub fn scan(_config: &Config) -> ScanResult {
     // ~/.android/cache/
     let android_cache = home.join(".android").join("cache");
     if android_cache.exists() {
-        let size = dir_size(&android_cache);
+        let size = crate::utils::dir_size_abortable(&android_cache, abort);
         if size > 0 {
             result.add_item(CleanItem {
                 path: android_cache,
@@ -57,7 +59,11 @@ pub fn scan(_config: &Config) -> ScanResult {
     result
 }
 
-fn scan_build_tools(build_tools: &std::path::Path, result: &mut ScanResult) {
+fn scan_build_tools(
+    build_tools: &std::path::Path,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     let Ok(entries) = std::fs::read_dir(build_tools) else {
         return;
     };
@@ -71,7 +77,7 @@ fn scan_build_tools(build_tools: &std::path::Path, result: &mut ScanResult) {
     }
     let old = old_versions(versions);
     for path in old {
-        let size = dir_size(&path);
+        let size = crate::utils::dir_size_abortable(&path, abort);
         let ver = path
             .file_name()
             .unwrap_or_default()
@@ -94,7 +100,7 @@ fn scan_build_tools(build_tools: &std::path::Path, result: &mut ScanResult) {
 /// Projects typically only need `compileSdkVersion` and one below it.
 const KEEP_PLATFORMS: usize = 2;
 
-fn scan_platforms(platforms: &std::path::Path, result: &mut ScanResult) {
+fn scan_platforms(platforms: &std::path::Path, result: &mut ScanResult, abort: &Arc<AtomicBool>) {
     let Ok(entries) = std::fs::read_dir(platforms) else {
         return;
     };
@@ -114,7 +120,7 @@ fn scan_platforms(platforms: &std::path::Path, result: &mut ScanResult) {
     versions.sort_by(|a, b| crate::utils::compare_versions(&a.0, &b.0));
     let old_count = versions.len() - KEEP_PLATFORMS;
     for (ver_str, path) in versions.into_iter().take(old_count) {
-        let size = dir_size(&path);
+        let size = crate::utils::dir_size_abortable(&path, abort);
         let name = path
             .file_name()
             .unwrap_or_default()

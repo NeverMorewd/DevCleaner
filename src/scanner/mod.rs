@@ -58,54 +58,78 @@ pub fn run_all_scanners(
         };
     }
 
-    maybe_scan!(config.scanners.nuget, nuget::scan(config), "NuGet");
-    maybe_scan!(config.scanners.cargo, cargo_scan::scan(config), "Cargo");
-    maybe_scan!(config.scanners.golang, golang::scan(config), "Go Modules");
-    maybe_scan!(config.scanners.node, node::scan(config), "Node.js");
-    maybe_scan!(config.scanners.pip, pip::scan(config), "pip / uv");
-    maybe_scan!(config.scanners.maven, maven::scan(config), "Maven");
-    maybe_scan!(config.scanners.gradle, gradle::scan(config), "Gradle");
-    maybe_scan!(config.scanners.cpp_vcpkg, cpp::scan_vcpkg(config), "vcpkg");
-    maybe_scan!(config.scanners.cpp_conan, cpp::scan_conan(config), "Conan");
+    maybe_scan!(config.scanners.nuget, nuget::scan(config, abort), "NuGet");
+    maybe_scan!(
+        config.scanners.cargo,
+        cargo_scan::scan(config, abort),
+        "Cargo"
+    );
+    maybe_scan!(
+        config.scanners.golang,
+        golang::scan(config, abort),
+        "Go Modules"
+    );
+    maybe_scan!(config.scanners.node, node::scan(config, abort), "Node.js");
+    maybe_scan!(config.scanners.pip, pip::scan(config, abort), "pip / uv");
+    maybe_scan!(config.scanners.maven, maven::scan(config, abort), "Maven");
+    maybe_scan!(
+        config.scanners.gradle,
+        gradle::scan(config, abort),
+        "Gradle"
+    );
+    maybe_scan!(
+        config.scanners.cpp_vcpkg,
+        cpp::scan_vcpkg(config, abort),
+        "vcpkg"
+    );
+    maybe_scan!(
+        config.scanners.cpp_conan,
+        cpp::scan_conan(config, abort),
+        "Conan"
+    );
     maybe_scan!(
         config.scanners.build_artifacts,
-        artifacts::scan(config),
+        artifacts::scan(config, abort),
         "Build Artifacts"
     );
     maybe_scan!(
         config.scanners.env_vars,
-        envvars::scan(config),
+        envvars::scan(config, abort),
         "Environment Variables"
     );
     maybe_scan!(
         config.scanners.dump_files,
-        dumps::scan(config),
+        dumps::scan(config, abort),
         "Dump Files"
     );
     maybe_scan!(
         config.scanners.android_sdk,
-        android::scan(config),
+        android::scan(config, abort),
         "Android SDK"
     );
     maybe_scan!(
         config.scanners.ide_cache,
-        ide_cache::scan(config),
+        ide_cache::scan(config, abort),
         "IDE Caches"
     );
     maybe_scan!(
         config.scanners.windows_temp,
-        windows_temp::scan(config),
+        windows_temp::scan(config, abort),
         "Windows Temp"
     );
-    maybe_scan!(config.scanners.rustup, rustup::scan(config), "Rustup");
+    maybe_scan!(
+        config.scanners.rustup,
+        rustup::scan(config, abort),
+        "Rustup"
+    );
     maybe_scan!(
         config.scanners.browser_cache,
-        browser::scan(config),
+        browser::scan(config, abort),
         "Browser Caches"
     );
     maybe_scan!(
         config.scanners.flutter_pub,
-        flutter_pub::scan(config),
+        flutter_pub::scan(config, abort),
         "Flutter/Dart Pub"
     );
 

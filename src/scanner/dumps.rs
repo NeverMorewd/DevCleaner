@@ -4,7 +4,10 @@ use std::path::{Path, PathBuf};
 
 const SCANNER_NAME: &str = "Dump Files";
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(
+    _config: &Config,
+    _abort: &std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> ScanResult {
     let mut result = ScanResult::new(SCANNER_NAME);
 
     // %LOCALAPPDATA%\CrashDumps\

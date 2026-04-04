@@ -1,9 +1,10 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::dir_size;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(config: &Config) -> ScanResult {
+pub fn scan(config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Windows Temp");
     let opts = &config.windows_temp_options;
 
@@ -11,14 +12,14 @@ pub fn scan(config: &Config) -> ScanResult {
     if opts.user_temp {
         if let Ok(temp) = std::env::var("TEMP") {
             let temp_path = PathBuf::from(temp);
-            add_temp_dir_item(&temp_path, "User temp files", &mut result);
+            add_temp_dir_item(&temp_path, "User temp files", &mut result, abort);
         }
     }
 
     // Windows system temp — clear contents only, may need elevation
     if opts.system_temp {
         let win_temp = PathBuf::from(r"C:\Windows\Temp");
-        match try_add_temp_dir_item(&win_temp, "Windows system temp") {
+        match try_add_temp_dir_item(&win_temp, "Windows system temp", abort) {
             Ok(Some(item)) => result.add_item(item),
             Ok(None) => {}
             Err(e) => {
@@ -32,7 +33,7 @@ pub fn scan(config: &Config) -> ScanResult {
     // Windows Prefetch — safe to clear entirely, Windows rebuilds it
     if opts.prefetch {
         let prefetch = PathBuf::from(r"C:\Windows\Prefetch");
-        match try_add_cache_item(&prefetch, "Windows Prefetch files") {
+        match try_add_cache_item(&prefetch, "Windows Prefetch files", abort) {
             Ok(Some(item)) => result.add_item(item),
             Ok(None) => {}
             Err(e) => {
@@ -46,7 +47,7 @@ pub fn scan(config: &Config) -> ScanResult {
     // Windows Update download cache — safe to delete entirely
     if opts.wu_download {
         let wu_download = PathBuf::from(r"C:\Windows\SoftwareDistribution\Download");
-        match try_add_cache_item(&wu_download, "Windows Update download cache") {
+        match try_add_cache_item(&wu_download, "Windows Update download cache", abort) {
             Ok(Some(item)) => result.add_item(item),
             Ok(None) => {}
             Err(e) => {
@@ -65,7 +66,12 @@ pub fn scan(config: &Config) -> ScanResult {
             // IE/Edge legacy cache
             if opts.inet_cache {
                 let inet_cache = local.join("Microsoft").join("Windows").join("INetCache");
-                add_cache_item(&inet_cache, "IE/Edge legacy internet cache", &mut result);
+                add_cache_item(
+                    &inet_cache,
+                    "IE/Edge legacy internet cache",
+                    &mut result,
+                    abort,
+                );
             }
 
             // Windows Error Reporting
@@ -73,8 +79,18 @@ pub fn scan(config: &Config) -> ScanResult {
                 let wer = local.join("Microsoft").join("Windows").join("WER");
                 let wer_archive = wer.join("ReportArchive");
                 let wer_queue = wer.join("ReportQueue");
-                add_cache_item(&wer_archive, "Windows Error Reporting archive", &mut result);
-                add_cache_item(&wer_queue, "Windows Error Reporting queue", &mut result);
+                add_cache_item(
+                    &wer_archive,
+                    "Windows Error Reporting archive",
+                    &mut result,
+                    abort,
+                );
+                add_cache_item(
+                    &wer_queue,
+                    "Windows Error Reporting queue",
+                    &mut result,
+                    abort,
+                );
             }
         }
     }
@@ -82,11 +98,16 @@ pub fn scan(config: &Config) -> ScanResult {
     result
 }
 
-fn add_temp_dir_item(path: &Path, description: &str, result: &mut ScanResult) {
+fn add_temp_dir_item(
+    path: &Path,
+    description: &str,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     if !path.exists() {
         return;
     }
-    let size = dir_size(path);
+    let size = crate::utils::dir_size_abortable(path, abort);
     if size > 0 {
         result.add_item(CleanItem {
             path: path.to_path_buf(),
@@ -101,12 +122,16 @@ fn add_temp_dir_item(path: &Path, description: &str, result: &mut ScanResult) {
     }
 }
 
-fn try_add_temp_dir_item(path: &PathBuf, description: &str) -> Result<Option<CleanItem>, String> {
+fn try_add_temp_dir_item(
+    path: &PathBuf,
+    description: &str,
+    abort: &Arc<AtomicBool>,
+) -> Result<Option<CleanItem>, String> {
     if !path.exists() {
         return Ok(None);
     }
     std::fs::read_dir(path).map_err(|e| e.to_string())?;
-    let size = dir_size(path);
+    let size = crate::utils::dir_size_abortable(path, abort);
     if size == 0 {
         return Ok(None);
     }
@@ -122,11 +147,16 @@ fn try_add_temp_dir_item(path: &PathBuf, description: &str) -> Result<Option<Cle
     }))
 }
 
-fn add_cache_item(path: &Path, description: &str, result: &mut ScanResult) {
+fn add_cache_item(
+    path: &Path,
+    description: &str,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     if !path.exists() {
         return;
     }
-    let size = dir_size(path);
+    let size = crate::utils::dir_size_abortable(path, abort);
     if size > 0 {
         result.add_item(CleanItem {
             path: path.to_path_buf(),
@@ -141,12 +171,16 @@ fn add_cache_item(path: &Path, description: &str, result: &mut ScanResult) {
     }
 }
 
-fn try_add_cache_item(path: &PathBuf, description: &str) -> Result<Option<CleanItem>, String> {
+fn try_add_cache_item(
+    path: &PathBuf,
+    description: &str,
+    abort: &Arc<AtomicBool>,
+) -> Result<Option<CleanItem>, String> {
     if !path.exists() {
         return Ok(None);
     }
     std::fs::read_dir(path).map_err(|e| e.to_string())?;
-    let size = dir_size(path);
+    let size = crate::utils::dir_size_abortable(path, abort);
     if size == 0 {
         return Ok(None);
     }

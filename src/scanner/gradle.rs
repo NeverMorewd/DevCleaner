@@ -1,9 +1,11 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::{dir_size, old_versions};
+use crate::utils::old_versions;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Gradle");
 
     let Some(home) = dirs::home_dir() else {
@@ -24,7 +26,7 @@ pub fn scan(_config: &Config) -> ScanResult {
         if name.starts_with("modules-") && path.is_dir() {
             let files_dir = path.join("files-2.1");
             if files_dir.exists() {
-                scan_gradle_files_dir(&files_dir, &mut result);
+                scan_gradle_files_dir(&files_dir, &mut result, abort);
             }
         }
     }
@@ -32,7 +34,7 @@ pub fn scan(_config: &Config) -> ScanResult {
     result
 }
 
-fn scan_gradle_files_dir(files_dir: &Path, result: &mut ScanResult) {
+fn scan_gradle_files_dir(files_dir: &Path, result: &mut ScanResult, abort: &Arc<AtomicBool>) {
     // Structure: GROUP/ARTIFACT/VERSION/HASH/file
     let Ok(group_entries) = std::fs::read_dir(files_dir) else {
         return;
@@ -69,7 +71,7 @@ fn scan_gradle_files_dir(files_dir: &Path, result: &mut ScanResult) {
 
             let old = old_versions(versions);
             for path in old {
-                let size = dir_size(&path);
+                let size = crate::utils::dir_size_abortable(&path, abort);
                 let ver = path
                     .file_name()
                     .unwrap_or_default()

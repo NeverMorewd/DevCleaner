@@ -6,6 +6,7 @@ use walkdir::WalkDir;
 /// Does NOT follow symlinks or junctions (`follow_links(false)` is the WalkDir default).
 /// This prevents infinite loops in directories that contain junction points, and avoids
 /// double-counting Docker WSL2 VHD disk images which are exposed as junctions on Windows.
+#[allow(dead_code)]
 pub fn dir_size(path: &Path) -> u64 {
     if path.is_file() {
         return path.metadata().map(|m| m.len()).unwrap_or(0);
@@ -17,6 +18,34 @@ pub fn dir_size(path: &Path) -> u64 {
         .filter(|e| e.file_type().is_file())
         .map(|e| e.metadata().map(|m| m.len()).unwrap_or(0))
         .sum()
+}
+
+/// Calculate total size of a directory recursively, checking abort flag periodically.
+/// Returns partial size if aborted.
+pub fn dir_size_abortable(
+    path: &Path,
+    abort: &std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> u64 {
+    use std::sync::atomic::Ordering;
+    if path.is_file() {
+        return path.metadata().map(|m| m.len()).unwrap_or(0);
+    }
+    let mut total = 0u64;
+    let mut count = 0u32;
+    for entry in WalkDir::new(path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        count += 1;
+        if count.is_multiple_of(500) && abort.load(Ordering::Relaxed) {
+            return total;
+        }
+        if entry.file_type().is_file() {
+            total += entry.metadata().map(|m| m.len()).unwrap_or(0);
+        }
+    }
+    total
 }
 
 /// Compare two version strings, returning Ordering

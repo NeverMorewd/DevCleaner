@@ -1,10 +1,12 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::{dir_size, old_versions};
+use crate::utils::old_versions;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Go Modules");
 
     // Module cache
@@ -13,14 +15,14 @@ pub fn scan(_config: &Config) -> ScanResult {
         .unwrap_or_else(|_| dirs::home_dir().unwrap_or_default().join("go"));
     let mod_cache = gopath.join("pkg").join("mod");
     if mod_cache.exists() {
-        scan_mod_cache(&mod_cache, &mut result);
+        scan_mod_cache(&mod_cache, &mut result, abort);
     }
 
     // Build cache
     if let Some(local) = dirs::data_local_dir() {
         let build_cache = local.join("go-build");
         if build_cache.exists() {
-            let size = dir_size(&build_cache);
+            let size = crate::utils::dir_size_abortable(&build_cache, abort);
             if size > 0 {
                 result.add_item(CleanItem {
                     path: build_cache,
@@ -39,7 +41,7 @@ pub fn scan(_config: &Config) -> ScanResult {
     result
 }
 
-fn scan_mod_cache(mod_cache: &std::path::Path, result: &mut ScanResult) {
+fn scan_mod_cache(mod_cache: &std::path::Path, result: &mut ScanResult, abort: &Arc<AtomicBool>) {
     // mod_cache contains domain dirs like `github.com`, `golang.org`, etc.
     // Each domain has user/repo@vVER dirs
     // We do a recursive walk to find @version directories
@@ -51,7 +53,7 @@ fn scan_mod_cache(mod_cache: &std::path::Path, result: &mut ScanResult) {
     for (module_path, versions) in by_module {
         let old = old_versions(versions);
         for path in old {
-            let size = dir_size(&path);
+            let size = crate::utils::dir_size_abortable(&path, abort);
             let dir_name = path
                 .file_name()
                 .unwrap_or_default()

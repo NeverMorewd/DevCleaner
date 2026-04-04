@@ -1,9 +1,11 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::{dir_size, old_versions};
+use crate::utils::old_versions;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Maven");
 
     let Some(home) = dirs::home_dir() else {
@@ -15,12 +17,12 @@ pub fn scan(_config: &Config) -> ScanResult {
     }
 
     // Walk the tree: find artifact directories (dirs that contain version subdirs)
-    scan_group_dir(&repo, "", &mut result);
+    scan_group_dir(&repo, "", &mut result, abort);
 
     result
 }
 
-fn scan_group_dir(dir: &Path, prefix: &str, result: &mut ScanResult) {
+fn scan_group_dir(dir: &Path, prefix: &str, result: &mut ScanResult, abort: &Arc<AtomicBool>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
@@ -51,7 +53,7 @@ fn scan_group_dir(dir: &Path, prefix: &str, result: &mut ScanResult) {
         let artifact = prefix.split('/').next_back().unwrap_or(prefix);
         let old = old_versions(version_dirs);
         for path in old {
-            let size = dir_size(&path);
+            let size = crate::utils::dir_size_abortable(&path, abort);
             let ver = path
                 .file_name()
                 .unwrap_or_default()
@@ -76,6 +78,6 @@ fn scan_group_dir(dir: &Path, prefix: &str, result: &mut ScanResult) {
         } else {
             format!("{}/{}", prefix, name)
         };
-        scan_group_dir(&path, &new_prefix, result);
+        scan_group_dir(&path, &new_prefix, result, abort);
     }
 }

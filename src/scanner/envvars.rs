@@ -37,7 +37,7 @@ const KNOWN_PATH_VARS: &[&str] = &[
     "VULKAN_SDK",
 ];
 
-pub fn scan(config: &Config) -> ScanResult {
+pub fn scan(config: &Config, _abort: &std::sync::Arc<std::sync::atomic::AtomicBool>) -> ScanResult {
     #[cfg(windows)]
     {
         scan_windows(config)

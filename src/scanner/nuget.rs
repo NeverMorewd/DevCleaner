@@ -1,16 +1,18 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::{dir_size, old_versions};
+use crate::utils::old_versions;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("NuGet");
 
     // Main package store
     if let Some(home) = dirs::home_dir() {
         let packages_dir = home.join(".nuget").join("packages");
         if packages_dir.exists() {
-            scan_versioned_store(&packages_dir, &mut result);
+            scan_versioned_store(&packages_dir, &mut result, abort);
         }
     }
 
@@ -18,7 +20,7 @@ pub fn scan(_config: &Config) -> ScanResult {
     if let Some(local) = dirs::data_local_dir() {
         let cache = local.join("NuGet").join("Cache");
         if cache.exists() {
-            let size = dir_size(&cache);
+            let size = crate::utils::dir_size_abortable(&cache, abort);
             if size > 0 {
                 result.add_item(CleanItem {
                     path: cache.clone(),
@@ -38,7 +40,7 @@ pub fn scan(_config: &Config) -> ScanResult {
     if let Ok(temp) = std::env::var("TEMP") {
         let scratch = std::path::PathBuf::from(temp).join("NuGetScratch");
         if scratch.exists() {
-            let size = dir_size(&scratch);
+            let size = crate::utils::dir_size_abortable(&scratch, abort);
             if size > 0 {
                 result.add_item(CleanItem {
                     path: scratch,
@@ -57,7 +59,11 @@ pub fn scan(_config: &Config) -> ScanResult {
     result
 }
 
-fn scan_versioned_store(packages_dir: &std::path::Path, result: &mut ScanResult) {
+fn scan_versioned_store(
+    packages_dir: &std::path::Path,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     // Structure: packages_dir/pkg_name/version/
     let Ok(pkg_entries) = std::fs::read_dir(packages_dir) else {
         return;
@@ -87,7 +93,7 @@ fn scan_versioned_store(packages_dir: &std::path::Path, result: &mut ScanResult)
         let items: Vec<(String, std::path::PathBuf)> = versions.into_iter().collect();
         let old = old_versions(items);
         for path in old {
-            let size = dir_size(&path);
+            let size = crate::utils::dir_size_abortable(&path, abort);
             let ver = path
                 .file_name()
                 .unwrap_or_default()

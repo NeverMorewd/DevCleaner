@@ -1,9 +1,10 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::dir_size;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan(_config: &Config) -> ScanResult {
+pub fn scan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Rustup");
 
     let home = match dirs::home_dir() {
@@ -16,13 +17,13 @@ pub fn scan(_config: &Config) -> ScanResult {
     // Toolchains
     let toolchains_dir = rustup_root.join("toolchains");
     if toolchains_dir.exists() {
-        scan_toolchains(&toolchains_dir, &mut result);
+        scan_toolchains(&toolchains_dir, &mut result, abort);
     }
 
     // Cached downloads
     let downloads_dir = rustup_root.join("downloads");
     if downloads_dir.exists() {
-        let size = dir_size(&downloads_dir);
+        let size = crate::utils::dir_size_abortable(&downloads_dir, abort);
         if size > 0 {
             result.add_item(CleanItem {
                 path: downloads_dir,
@@ -45,7 +46,11 @@ const KEEP_NIGHTLY: usize = 2;
 /// Keep this many stable/beta toolchains per target.
 const KEEP_STABLE: usize = 1;
 
-fn scan_toolchains(toolchains_dir: &std::path::Path, result: &mut ScanResult) {
+fn scan_toolchains(
+    toolchains_dir: &std::path::Path,
+    result: &mut ScanResult,
+    abort: &Arc<AtomicBool>,
+) {
     let Ok(entries) = std::fs::read_dir(toolchains_dir) else {
         return;
     };
@@ -81,7 +86,7 @@ fn scan_toolchains(toolchains_dir: &std::path::Path, result: &mut ScanResult) {
         toolchains.sort_by(|a, b| crate::utils::compare_versions(&a.0, &b.0));
         let old_count = toolchains.len() - keep;
         for (_, path) in toolchains.into_iter().take(old_count) {
-            let size = dir_size(&path);
+            let size = crate::utils::dir_size_abortable(&path, abort);
             let tc_name = path
                 .file_name()
                 .unwrap_or_default()

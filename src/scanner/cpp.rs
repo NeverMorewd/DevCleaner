@@ -1,9 +1,10 @@
 use crate::config::Config;
 use crate::types::{CleanItem, CleanItemType, ScanResult};
-use crate::utils::dir_size;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-pub fn scan_vcpkg(_config: &Config) -> ScanResult {
+pub fn scan_vcpkg(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("vcpkg");
 
     let vcpkg_root = std::env::var("VCPKG_ROOT")
@@ -21,7 +22,7 @@ pub fn scan_vcpkg(_config: &Config) -> ScanResult {
     // buildtrees - intermediate build files
     let buildtrees = root.join("buildtrees");
     if buildtrees.exists() {
-        let size = dir_size(&buildtrees);
+        let size = crate::utils::dir_size_abortable(&buildtrees, abort);
         if size > 0 {
             result.add_item(CleanItem {
                 path: buildtrees,
@@ -39,7 +40,7 @@ pub fn scan_vcpkg(_config: &Config) -> ScanResult {
     // packages - installed staging area (can be rebuilt)
     let packages = root.join("packages");
     if packages.exists() {
-        let size = dir_size(&packages);
+        let size = crate::utils::dir_size_abortable(&packages, abort);
         if size > 0 {
             result.add_item(CleanItem {
                 path: packages,
@@ -57,7 +58,7 @@ pub fn scan_vcpkg(_config: &Config) -> ScanResult {
     result
 }
 
-pub fn scan_conan(_config: &Config) -> ScanResult {
+pub fn scan_conan(_config: &Config, abort: &Arc<AtomicBool>) -> ScanResult {
     let mut result = ScanResult::new("Conan");
 
     let Some(home) = dirs::home_dir() else {
@@ -71,7 +72,7 @@ pub fn scan_conan(_config: &Config) -> ScanResult {
         (&conan2_data, "Conan 2.x cache"),
     ] {
         if path.exists() {
-            let size = dir_size(path);
+            let size = crate::utils::dir_size_abortable(path, abort);
             if size > 0 {
                 result.add_item(CleanItem {
                     path: path.clone(),
