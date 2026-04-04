@@ -206,11 +206,13 @@ fn do_scan(config: &config::Config) -> Vec<types::ScanResult> {
     pb.enable_steady_tick(Duration::from_millis(80));
 
     let abort = Arc::new(AtomicBool::new(false));
-    let results = scanner::run_all_scanners(
+    let mut results = Vec::new();
+    scanner::run_all_scanners(
         config,
         |name| {
             pb.set_message(name.to_string());
         },
+        |result| results.push(result),
         &abort,
     );
 
