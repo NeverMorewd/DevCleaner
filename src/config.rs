@@ -86,50 +86,84 @@ impl Default for WindowsTempOptions {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralConfig {
     pub confirm_before_delete: bool,
-    /// Set to true after the first-run smart-default detection has been applied.
-    /// Old config files written before this field existed will deserialize it as
-    /// false (thanks to `#[serde(default)]`), triggering a one-time re-detection.
+    /// Legacy field — kept only for backward compat with configs saved before v2.
     #[serde(default)]
     pub smart_defaults_applied: bool,
+    /// Version of smart-defaults detection. Bump SMART_DEFAULTS_VERSION to force
+    /// a one-time re-detection pass on next startup.
+    #[serde(default)]
+    pub smart_defaults_version: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ScannersConfig {
+    #[serde(default)]
     pub nuget: bool,
+    #[serde(default)]
     pub cargo: bool,
+    #[serde(default)]
     pub golang: bool,
+    #[serde(default)]
     pub node: bool,
+    #[serde(default)]
     pub pip: bool,
+    #[serde(default)]
     pub maven: bool,
+    #[serde(default)]
     pub gradle: bool,
+    #[serde(default)]
     pub cpp_vcpkg: bool,
+    #[serde(default)]
     pub cpp_conan: bool,
+    #[serde(default)]
     pub build_artifacts: bool,
+    #[serde(default)]
     pub env_vars: bool,
+    #[serde(default)]
     pub dump_files: bool,
+    #[serde(default)]
     pub android_sdk: bool,
+    #[serde(default)]
     pub ide_cache: bool,
+    #[serde(default)]
     pub windows_temp: bool,
+    #[serde(default)]
     pub rustup: bool,
+    #[serde(default)]
     pub browser_cache: bool,
+    #[serde(default)]
     pub flutter_pub: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ArtifactsConfig {
     // Per-language toggles
+    #[serde(default)]
     pub scan_csharp_obj_bin: bool, // C# obj/ bin/
-    pub scan_rust_target: bool,    // Rust target/
-    pub scan_node_modules: bool,   // node_modules/
-    pub scan_frontend_dist: bool,  // .next/ .nuxt/ .svelte-kit/ dist/ etc.
-    pub scan_java_build: bool,     // Maven target/ Gradle build/ Android build/
-    pub scan_python_cache: bool,   // __pycache__/ .pytest_cache/ .mypy_cache/ build/ dist/
-    pub scan_cmake_build: bool,    // CMakeFiles/ cmake-build-*/ build/ out/ (C/C++)
-    pub scan_flutter_build: bool,  // Flutter build/ .dart_tool/
-    pub scan_go_vendor: bool,      // Go vendor/
+    #[serde(default)]
+    pub scan_rust_target: bool, // Rust target/
+    #[serde(default)]
+    pub scan_node_modules: bool, // node_modules/
+    #[serde(default)]
+    pub scan_frontend_dist: bool, // .next/ .nuxt/ .svelte-kit/ dist/ etc.
+    #[serde(default)]
+    pub scan_java_build: bool, // Maven target/ Gradle build/ Android build/
+    #[serde(default)]
+    pub scan_python_cache: bool, // __pycache__/ .pytest_cache/ .mypy_cache/ build/ dist/
+    #[serde(default)]
+    pub scan_cmake_build: bool, // CMakeFiles/ cmake-build-*/ build/ out/ (C/C++)
+    #[serde(default)]
+    pub scan_flutter_build: bool, // Flutter build/ .dart_tool/
+    #[serde(default)]
+    pub scan_go_vendor: bool, // Go vendor/
     /// Additional project roots to scan (auto-discovery is always on)
+    #[serde(default)]
     pub project_roots: Vec<String>,
 }
+
+/// Increment this when new scanners are added or detector logic changes.
+/// Configs with a lower version get a one-time re-detection pass.
+const SMART_DEFAULTS_VERSION: u32 = 2;
 
 impl Default for Config {
     fn default() -> Self {
@@ -137,6 +171,7 @@ impl Default for Config {
             general: GeneralConfig {
                 confirm_before_delete: true,
                 smart_defaults_applied: true,
+                smart_defaults_version: SMART_DEFAULTS_VERSION,
             },
             scanners: ScannersConfig {
                 nuget: true,
@@ -192,6 +227,7 @@ impl Config {
             general: GeneralConfig {
                 confirm_before_delete: true,
                 smart_defaults_applied: true,
+                smart_defaults_version: SMART_DEFAULTS_VERSION,
             },
             scanners: ScannersConfig {
                 nuget: env.dotnet,
@@ -244,12 +280,13 @@ impl Config {
 
         // Migration: config files written before smart-defaults existed (or ones
         // where all scanners ended up false due to earlier bugs) get a one-time
-        // re-detection pass.  The flag is then saved so this only runs once.
-        if !config.general.smart_defaults_applied {
+        // re-detection pass.  The version is then bumped so this only runs once.
+        if config.general.smart_defaults_version < SMART_DEFAULTS_VERSION {
             let smart = Self::smart_default();
             config.scanners = smart.scanners;
             config.artifacts = smart.artifacts;
             config.general.smart_defaults_applied = true;
+            config.general.smart_defaults_version = SMART_DEFAULTS_VERSION;
             let _ = config.save(); // best-effort; ignore I/O errors here
         }
 

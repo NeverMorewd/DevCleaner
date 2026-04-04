@@ -204,6 +204,10 @@ class _ScanPageState extends State<ScanPage> {
     return Consumer2<ScanProvider, ConfigProvider>(
       builder: (context, scan, config, _) {
         final hasContent = scan.state == ScanState.done || scan.state == ScanState.error;
+        final scannerPanel = SingleChildScrollView(
+          child: _buildScannerPanel(context, config),
+        );
+
         return CallbackShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.f5): () {
@@ -219,25 +223,20 @@ class _ScanPageState extends State<ScanPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildScannerHeader(context, scan, config),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeInOut,
-                  child: _scannersExpanded
-                      ? ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxHeight: MediaQuery.of(context).size.height * 0.52,
-                          ),
-                          child: SingleChildScrollView(
-                            child: _buildScannerPanel(context, config),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
+                if (_scannersExpanded) ...[
+                  if (!hasContent)
+                    Expanded(child: scannerPanel)
+                  else
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.40,
+                      child: scannerPanel,
+                    ),
+                ] else if (!hasContent)
+                  Expanded(child: _buildIdleState(context, config)),
                 if (hasContent) ...[
                   _buildResultsHeader(context, scan),
                   if (_resultsExpanded) Expanded(child: _buildResultsContent(context, scan)),
-                ] else
-                  Expanded(child: _buildIdleState(context, config)),
+                ],
               ],
             ),
           ),
@@ -351,6 +350,17 @@ class _ScanPageState extends State<ScanPage> {
             children: _buildWindowsTempChildren(context, config),
           ),
           _buildWhitelistRow(context, config),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Center(
+              child: Text(
+                'Press F5 or click  Start Scan  to begin',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 6),
         ],
       ),
@@ -413,13 +423,16 @@ class _ScanPageState extends State<ScanPage> {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Switch(
-                  value: anyOn,
-                  onChanged: (v) {
-                    _toggleGroupAll(config, group, v);
-                    _scheduleConfigSave(config);
-                  },
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                child: Transform.scale(
+                  scale: 0.75,
+                  child: Switch(
+                    value: anyOn,
+                    onChanged: (v) {
+                      _toggleGroupAll(config, group, v);
+                      _scheduleConfigSave(config);
+                    },
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
               ),
             ),
@@ -541,10 +554,13 @@ class _ScanPageState extends State<ScanPage> {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Switch(
-                  value: enabled,
-                  onChanged: (v) { config.updateScanner(scannerKey, v); _scheduleConfigSave(config); },
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                child: Transform.scale(
+                  scale: 0.75,
+                  child: Switch(
+                    value: enabled,
+                    onChanged: (v) { config.updateScanner(scannerKey, v); _scheduleConfigSave(config); },
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
               ),
             ),
@@ -682,7 +698,7 @@ class _ScanPageState extends State<ScanPage> {
             ? const Color(0xFF0F1923)
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
         border: Border(
-          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5)),
+          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.9), width: 1.5),
           bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
         ),
       ),
@@ -1604,9 +1620,12 @@ class _ScannerRow extends StatelessWidget {
               ), overflow: TextOverflow.ellipsis),
             ],
           )),
-          Switch(
-            value: enabled, onChanged: onToggle,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          Transform.scale(
+            scale: 0.75,
+            child: Switch(
+              value: enabled, onChanged: onToggle,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
         ]),
       ),
