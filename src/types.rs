@@ -79,7 +79,11 @@ impl ScanResult {
         // Case-insensitive dedup — Windows FS is case-insensitive and the same
         // directory can be visited via different roots or junctions.
         let key = item.path.to_string_lossy().to_lowercase();
-        if self.items.iter().any(|i| i.path.to_string_lossy().to_lowercase() == key) {
+        if self
+            .items
+            .iter()
+            .any(|i| i.path.to_string_lossy().to_lowercase() == key)
+        {
             return;
         }
         self.total_size += item.size;

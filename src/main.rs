@@ -341,9 +341,7 @@ fn interactive_config_edit(config: &mut config::Config) -> Result<()> {
         config.artifacts.scan_go_vendor,
     ];
     let art_sel = MultiSelect::new()
-        .with_prompt(
-            "Build artifact types to scan (auto-discovery enabled for common dev paths)",
-        )
+        .with_prompt("Build artifact types to scan (auto-discovery enabled for common dev paths)")
         .items(&art_options)
         .defaults(&art_defaults)
         .interact()?;
