@@ -29,7 +29,7 @@ class CleanItem {
         version: json['version'] as String?,
       );
 
-  String get humanSize => _formatBytes(size);
+  String get humanSize => formatBytes(size);
 }
 
 class ScanResultGroup {
@@ -58,7 +58,8 @@ class ScanResultGroup {
   }
 }
 
-String _formatBytes(int bytes) {
+/// Public utility: format a byte count to a human-readable string.
+String formatBytes(int bytes) {
   if (bytes < 1024) return '$bytes B';
   if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
   if (bytes < 1024 * 1024 * 1024) {

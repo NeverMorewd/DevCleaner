@@ -432,7 +432,7 @@ class _ScanPageState extends State<ScanPage> {
               ],
               if (scan.state == ScanState.done) ...[
                 Text(
-                    '${scan.totalCount} items \u00b7 ${_hs(scan.totalSize)} found',
+                    '${scan.totalCount} items \u00b7 ${formatBytes(scan.totalSize)} found',
                     style: theme.textTheme.labelSmall
                         ?.copyWith(color: theme.colorScheme.primary)),
                 const SizedBox(width: 12),
@@ -1107,7 +1107,7 @@ class _ScanPageState extends State<ScanPage> {
             if (isDone)
               _Badge(
                 label:
-                    '${scan.filteredItems.length} / ${scan.totalCount}  \u00b7  ${_hs(scan.totalSize)}',
+                    '${scan.filteredItems.length} / ${scan.totalCount}  \u00b7  ${formatBytes(scan.totalSize)}',
                 color: theme.colorScheme.tertiary,
               )
             else if (scan.state == ScanState.error)
@@ -1479,7 +1479,7 @@ class _ScanPageState extends State<ScanPage> {
             size: 13, color: theme.colorScheme.onSurfaceVariant),
         const SizedBox(width: 6),
         Text(
-          '${scan.selectedCount} selected  \u00b7  ${_hs(scan.selectedSize)} will be freed',
+          '${scan.selectedCount} selected  \u00b7  ${formatBytes(scan.selectedSize)} will be freed',
           style: theme.textTheme.bodySmall,
         ),
         const Spacer(),
@@ -1510,7 +1510,7 @@ class _ScanPageState extends State<ScanPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: const Text('Confirm Deletion'),
         content: Text(
-            'Delete ${scan.selectedCount} items and free ${_hs(scan.selectedSize)}?\n\nThis cannot be undone.'),
+            'Delete ${scan.selectedCount} items and free ${formatBytes(scan.selectedSize)}?\n\nThis cannot be undone.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -1765,7 +1765,7 @@ class _ScanPageState extends State<ScanPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                  '${scan.deleteProgress} / ${scan.deleteTotal}  \u00b7  ${_hs(scan.freedBytes)} freed',
+                  '${scan.deleteProgress} / ${scan.deleteTotal}  \u00b7  ${formatBytes(scan.freedBytes)} freed',
                   style: theme.textTheme.bodySmall),
             ]),
           ),
@@ -1831,13 +1831,6 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 
-  String _hs(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024)
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-  }
 }
 
 // ── Whitelist dialog ──────────────────────────────────────────────────────────
